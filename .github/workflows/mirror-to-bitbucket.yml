@@ -2,13 +2,14 @@ name: Mirror to Bitbucket
 
 on:
   push:
-    branches: 
+    branches:
       - '**'
   pull_request:
     types: [opened, synchronize, closed]
 
 jobs:
-  mirror:
+  mirror_andrei:
+    if: github.actor == 'goombado'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -18,8 +19,26 @@ jobs:
 
       - name: Mirror to Bitbucket
         env:
-          BITBUCKET_USERNAME: ${{ secrets.BITBUCKET_USERNAME }}
-          BITBUCKET_APP_PASSWORD: ${{ secrets.BITBUCKET_APP_PASSWORD }}
+          BITBUCKET_USERNAME: ${{ secrets.BITBUCKET_USERNAME_ANDREI }}
+          BITBUCKET_APP_PASSWORD: ${{ secrets.BITBUCKET_APP_PASSWORD_ANDREI }}
+        run: |
+          git remote add bitbucket https://${BITBUCKET_USERNAME}:${BITBUCKET_APP_PASSWORD}@bitbucket.org/comp3888_m12_02/comp3888_m12_02.git
+          git push bitbucket --all
+          git push bitbucket --tags
+
+  mirror_grant:
+    if: github.actor == 'rstr1'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Mirror to Bitbucket
+        env:
+          BITBUCKET_USERNAME: ${{ secrets.BITBUCKET_USERNAME_GRANT }}
+          BITBUCKET_APP_PASSWORD: ${{ secrets.BITBUCKET_APP_PASSWORD_GRANT }}
         run: |
           git remote add bitbucket https://${BITBUCKET_USERNAME}:${BITBUCKET_APP_PASSWORD}@bitbucket.org/comp3888_m12_02/comp3888_m12_02.git
           git push bitbucket --all
