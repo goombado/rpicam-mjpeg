@@ -2,21 +2,24 @@
 
 ## Setup
 
-1.   Clone the repository and enter the directory
+1.   Clone the repository and enter the directory. Ensure you have the `--recurse-submodules` flag so that `libcamera-async` is also cloned.
 
      ```sh
-     git clone https://github.com/consiliumsolutions/p05c-rpi-gpu
+     git clone --recurse-submodules https://github.com/consiliumsolutions/p05c-rpi-gpu
      cd p05c-rpi-gpu
      ```
 
-2.   Change your git name and set your email to your university email
+2.   Change your git name and set your email to your university email.
 
      ```sh
      git config user.name "Full Name"
      git config user.email "unikey@uni.sydney.edu.au"
      ```
 
-
+3.   Add an option in your git config so that on each `git pull`, you also fetch the latest changes from the `libcamera-async` submobule.
+     ```sh
+     git config submodule.recurse true
+     ```
 
 ## Making changes
 
