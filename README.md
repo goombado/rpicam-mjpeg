@@ -71,12 +71,12 @@ Once the branch is ready to be merged, open a new pull request in the [Pull Requ
 ## SSH into the Raspberry Pi
 1. Ensure your Raspberry Pi is connected to a network (could be home wifi or mobile hotspot), and that the computer you're using is connected to the same network
 2. Get your Raspberry Pi IP address by doing one of the following:
-     2.1 Boot up the Raspberry Pi and open terminal. Run
+     - Boot up the Raspberry Pi and open terminal. Run
      ```sh
      hostname -I
      ```
      and you will get your Pi's IP address
-     2.2 Same as above but instead Run 
+     - Same as above but instead Run 
      ```sh
      nmcli device show
      ```
