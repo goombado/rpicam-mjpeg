@@ -1,0 +1,3 @@
+[submodule "libcamera-async"]
+	path = libcamera-async
+	url = https://github.com/COMP3888-M12-02-2024/libcamera-async
