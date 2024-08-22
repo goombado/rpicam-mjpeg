@@ -68,3 +68,35 @@ git push origin branch_name
 
 Once the branch is ready to be merged, open a new pull request in the [Pull Requests](https://github.com/consiliumsolutions/p05c-rpi-gpu/pulls) tab. Each branch needs at least one team member to review the code, and when this is done the branch can be merged into the main branch.
 
+## SSH into the Raspberry Pi
+1. Ensure your Raspberry Pi is connected to a network (could be home wifi or mobile hotspot), and that the computer you're using is connected to the same network
+2. Get your Raspberry Pi IP address by doing one of the following:
+     - Boot up the Raspberry Pi and open terminal. Run
+     ```sh
+     hostname -I
+     ```
+     and you will get your Pi's IP address
+     - Same as above but instead Run 
+     ```sh
+     nmcli device show
+     ```
+     Look for IP4.ADDRESS[1]. IP address is the numbers before /24. use the key 'q' to exit the code
+3. On the computer you want to ssh into the raspberry pi, run 
+```sh
+ssh <username>@<IP address>
+```
+where the username is the username that you setup when you flashed your OS, and IP address is the address of the Raspberry Pi. Then you will be prompted to enter your password and then boom, you have successfully connected to the Pi remotedly. You should see <username>@<RaspberryPi> on the left of your terminal lines.
+
+### USES
+The above gives you a terminal so you can run code, however if you want to write code you can do the following:
+
+1. On VS code, install the extension called remote development
+2. Bring up the command palette and search "Remote SSH: Connect current window to host"
+3. Add new host and type in the above ssh command, ie:
+```sh
+ssh <username>@<IP address>
+```
+4. It'll prompt you where to store the config file, just continue here doesn't really matter where you're storing it. Then it'll prompt you to entire your password, and if successful a new VS code window will open and now you can code on the Raspberry pi remotely.
+
+### Side notes
+For our purposes, we want to do something called X forwarding, on your terminal when you ssh, add the -X or -Y flag (will look into the differences), and when you run for example rpicam-hello you want to add the "--qt-preview" flag.
