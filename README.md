@@ -102,13 +102,16 @@ ssh <username>@<IP address>
 For our purposes, we want to do something called X forwarding, on your terminal when you ssh, add the -X or -Y flag (will look into the differences), and when you run for example rpicam-hello you want to add the "--qt-preview" flag.
 
 ### LIBCAMERA BUILD:
+```sh
 sudo apt install libboost-dev libgnutls28-dev openssl libtiff-dev pybind11-dev qtbase5-dev libqt5core5a libqt5widgets5 meson cmake python3-yaml python3-ply libglib2.0-dev libgstreamer-plugins-base1.0-dev
 cd libcamera
 or wherever you cloned the libcamera repo
 meson setup build --buildtype=release -Dpipelines=rpi/vc4,rpi/pisp -Dipas=rpi/vc4,rpi/pisp -Dv4l2=true -Dgstreamer=enabled -Dtest=false -Dlc-compliance=disabled -Dcam=disabled -Dqcam=disabled -Ddocumentation=disabled -Dpycamera=enabled
 sudo ninja -C build install
+```
 
 ### RPICAM-APPS BUILD:
+```sh
 sudo apt install libboost-program-options-dev libdrm-dev libexif-dev meson ninja-build libavcodec-dev libavdevice-dev libpng-dev libepoxy-dev
 cd rpicam-apps
 or wherever you cloned rpicam-apps
@@ -116,18 +119,23 @@ meson setup build -Denable_libav=enabled -Denable_drm=enabled -Denable_egl=enabl
 meson compile -C build
 sudo meson install -C build
 sudo ldconfig
+```
 
 ### IF YOU WANT TO REBUILD RPICAM-APPS WITH YOUR OWN NEW BUILD
+```sh
 cd rpicam-apps
 rm -rf build
 meson setup build -Denable_libav=enabled -Denable_drm=enabled -Denable_egl=enabled -Denable_qt=enabled -Denable_opencv=disabled -Denable_tflite=disabled
 meson compile -C build
 sudo meson install -C build
 sudo ldconfig
+```
 
 ### MAKEFILE ALTERNATIVE TO REBUILD RPICAM-APPS
+```sh
 cd rpicam-apps
 make
+```
 
 ### Code Review Instructions
 
@@ -137,13 +145,17 @@ This version of the program was a proof-of-concept task given to us by Cian. We 
 
 In order to navigate to the intended branch and directory to test  this code, please follow these instructions:
 
+```sh
 git checkout patrick-preview-test
 cd rpicam-apps
 make
+```
 
 then, on a Raspi environment (window won't display through an SSH), run
 
+```sh
 rpicam-patrick --verbose
+```
 
 This will open two preview windows, and feed both with the camera input. However, the program will crash after displaying only one frame. I have added a 2 second sleep statement so that the preview windows with the single frame will be visible.
 
@@ -153,9 +165,11 @@ These edits were an initial alternative approach to the task of improving the sp
 
 The modifications resulted in a time decrease from around 10 seconds to around 5 seconds, which is not as efficient as the result of the rpicam_jpeg changes that the team decided to pursue further. If you still want to test this out this alternative approach, complete the following instructions:
 
+```sh
 git checkout eleanor_photo_edits
 cd rpicam-apps
 make
+```
 
 Type this command into your Rpi terminal to take a photo, and the time it took to take the photo should be printed in the terminal:
 
@@ -169,18 +183,24 @@ These edits pertain to the rpicam_jpeg.cpp file, and by restructuring the camera
 
 In order to navigate to the intended branch and directory to test  this code, please follow these instructions:
 
+```sh
 git checkout alistair_branch
 cd rpicam-apps
 make build
+```
 
 You should now be able to execute image capture commands with significantly reduced execution time.
 
 For a basic image capture:
 
+```sh
 libcamera-jpeg -o test.jpg
+```
 
 4. daniel's branch
 
+```sh
 git checkout danBranch
 cd rpicam-apps
 make
+```
