@@ -139,7 +139,7 @@ make
 
 ### Code Review Instructions
 
-1. Two preview windows:
+1. Two Preview Windows:
 
 This version of the program was a proof-of-concept task given to us by Cian. We were to see if we could have two preview windows displaying at once. We were partially successful, as detailed below.
 
@@ -159,7 +159,7 @@ rpicam-patrick --verbose
 
 This will open two preview windows, and feed both with the camera input. However, the program will crash after displaying only one frame. I have added a 2 second sleep statement so that the preview windows with the single frame will be visible.
 
-2. rpicam_still fast image capture (initial approach):
+2. rpicam_still Image Capture Speedup (initial approach):
 
 These edits were an initial alternative approach to the task of improving the speed of taking a Raspberry Pi photo, modifying the rpicam_still files instead of the rpicam_jpeg files.
 
@@ -173,9 +173,11 @@ make
 
 Type this command into your Rpi terminal to take a photo, and the time it took to take the photo should be printed in the terminal:
 
+```sh
 libcamera-still --width 3280 --height 2464 -o test.jpg -n -t 1
+```
 
-***the right command might also be libcamera-still --width 3280 --height 2464 -o test.jpg (without the -n-t 1) but I don’t remember for sure
+*the right command might also be libcamera-still --width 3280 --height 2464 -o test.jpg(without the -n-t 1) but I don’t remember for sure*
 
 3. rpicam_jpeg Image Capture Speedup (faster version):
 
