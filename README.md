@@ -1,4 +1,5 @@
-# p05c-rpi-gpu - High Performance Multi-Stream Camera System for Raspberry Pi
+# p05c-rpi-gpu
+## High Performance Multi-Stream Camera System for Raspberry Pi
 
 ## Project Info
 
@@ -6,7 +7,7 @@
 
 #### University/Canvas Name: COMP3888_M12_02
 
-#### Tutor: Lin Zhang [lzha8455@uni.sydney.edu.au](mailto:lzha8455@uni.sydney.edu.au)
+#### Tutor: Lin Zhang \[[lzha8455@uni.sydney.edu.au](mailto:lzha8455@uni.sydney.edu.au)\]
 
 ### Team Members
 
@@ -29,6 +30,12 @@
 ### Documentation
 
 Our Documentation in Confluence can be found at [https://comp3888-m12-02-2024.atlassian.net/wiki/spaces/COMP3888M1/overview](https://comp3888-m12-02-2024.atlassian.net/wiki/spaces/COMP3888M1/overview)
+
+<br>
+
+![](InsiteProjectSolutions.png) 
+
+<br>
 
 ## Setup
 
@@ -69,18 +76,44 @@ git push origin branch_name
 Once the branch is ready to be merged, open a new pull request in the [Pull Requests](https://github.com/consiliumsolutions/p05c-rpi-gpu/pulls) tab. Each branch needs at least one team member to review the code, and when this is done the branch can be merged into the main branch.
 
 ## SSH into the Raspberry Pi
-1. Ensure your Raspberry Pi is connected to a network (could be home wifi or mobile hotspot), and that the computer you're using is connected to the same network
-2. Get your Raspberry Pi IP address by doing one of the following:
-     - Boot up the Raspberry Pi and open terminal. Run
+1. Network Connection
+
+Ensure your Raspberry Pi is connected to a network (could be home wifi or mobile hotspot), and that the computer you're using is connected to the same network.
+
+
+2. Obtaining RaspberryPi Local IP Address
+
+**The following method does NOT require an external monitor connected to the RPi**
+
+- Provided your Raspberry Pi and Computer are on the same Wifi Network, open up your computer terminal/command prompt and run:
+```sh
+ping <raspberrypi>.local
+```
+Here, \<raspberrypi\> represents the name of the Raspberry Pi (NOT your username).
+
+If that does not work, try without the ".local":
+```sh
+ping <raspberrypi>
+```
+If neither work, there is most likely an issue with your Wifi connections. Double check that both your Raspberry Pi and Computer are connected to the **SAME NETWORK**.
+
+<br>
+
+**Note: The following methods require an external monitor connected to the RPi**
+
+- Boot up the Raspberry Pi and open terminal (RPi) and run:    
      ```sh
      hostname -I
      ```
-     and you will get your Pi's IP address
-     - Same as above but instead Run 
+     This will output your RPi's Local IP address.
+     <br></br>
+- Alternatively, Boot up the Raspberry Pi and open terminal (RPi) and run:
      ```sh
      nmcli device show
      ```
      Look for IP4.ADDRESS[1]. IP address is the numbers before /24. use the key 'q' to exit the code
+     <br></br>
+
 3. On the computer you want to ssh into the raspberry pi, run 
 ```sh
 ssh <username>@<IP address>
@@ -101,45 +134,64 @@ ssh <username>@<IP address>
 ### Side notes
 For our purposes, we want to do something called X forwarding, on your terminal when you ssh, add the -X or -Y flag (will look into the differences), and when you run for example rpicam-hello you want to add the "--qt-preview" flag.
 
-### LIBCAMERA BUILD:
+## Build Instructions
+
+### libcamera Build:
 ```sh
 sudo apt install libboost-dev libgnutls28-dev openssl libtiff-dev pybind11-dev qtbase5-dev libqt5core5a libqt5widgets5 meson cmake python3-yaml python3-ply libglib2.0-dev libgstreamer-plugins-base1.0-dev
+
 cd libcamera
-or wherever you cloned the libcamera repo
+# or wherever you cloned the libcamera repo
+
 meson setup build --buildtype=release -Dpipelines=rpi/vc4,rpi/pisp -Dipas=rpi/vc4,rpi/pisp -Dv4l2=true -Dgstreamer=enabled -Dtest=false -Dlc-compliance=disabled -Dcam=disabled -Dqcam=disabled -Ddocumentation=disabled -Dpycamera=enabled
+
 sudo ninja -C build install
 ```
 
-### RPICAM-APPS BUILD:
+### rpicam-apps Build:
 ```sh
 sudo apt install libboost-program-options-dev libdrm-dev libexif-dev meson ninja-build libavcodec-dev libavdevice-dev libpng-dev libepoxy-dev
+
 cd rpicam-apps
-or wherever you cloned rpicam-apps
+# or wherever you cloned rpicam-apps
+
 meson setup build -Denable_libav=enabled -Denable_drm=enabled -Denable_egl=enabled -Denable_qt=enabled -Denable_opencv=disabled -Denable_tflite=disabled
+
 meson compile -C build
+
 sudo meson install -C build
+
 sudo ldconfig
 ```
 
-### IF YOU WANT TO REBUILD RPICAM-APPS WITH YOUR OWN NEW BUILD
+### rpicam-apps Rebuild (with your own New Build):
 ```sh
 cd rpicam-apps
+# or wherever you cloned rpicam-apps
+
 rm -rf build
+
 meson setup build -Denable_libav=enabled -Denable_drm=enabled -Denable_egl=enabled -Denable_qt=enabled -Denable_opencv=disabled -Denable_tflite=disabled
+
 meson compile -C build
+
 sudo meson install -C build
+
 sudo ldconfig
 ```
 
-### MAKEFILE ALTERNATIVE TO REBUILD RPICAM-APPS
+### rpicam-apps Rebuild (Makefile Alternative):
 ```sh
 cd rpicam-apps
 make
 ```
+<br>
 
-### Code Review Instructions
+## Code Review Instructions
 
-1. Two Preview Windows:
+### Two Preview Windows:
+
+<br>
 
 This version of the program was a proof-of-concept task given to us by Cian. We were to see if we could have two preview windows displaying at once. We were partially successful, as detailed below.
 
@@ -159,7 +211,13 @@ rpicam-patrick --verbose
 
 This will open two preview windows, and feed both with the camera input. However, the program will crash after displaying only one frame. I have added a 2 second sleep statement so that the preview windows with the single frame will be visible.
 
-2. rpicam_still Image Capture Speedup (initial approach):
+<br><br>
+
+### Image Capture Speedup [rpicam-still]:
+
+<br>
+
+*Note: this was the **initial** attempt.*
 
 These edits were an initial alternative approach to the task of improving the speed of taking a Raspberry Pi photo, modifying the rpicam_still files instead of the rpicam_jpeg files.
 
@@ -177,13 +235,17 @@ Type this command into your Rpi terminal to take a photo, and the time it took t
 libcamera-still --width 3280 --height 2464 -o test.jpg -n -t 1
 ```
 
-*the right command might also be libcamera-still --width 3280 --height 2464 -o test.jpg(without the -n-t 1) but I don’t remember for sure*
+<br><br>
 
-3. rpicam_jpeg Image Capture Speedup (faster version):
+### Image Capture Speedup [rpicam-jpeg]:
 
-These edits pertain to the rpicam_jpeg.cpp file, and by restructuring the camera configuration and removing redundant code, image capture has been reduced from roughly 5.5 seconds to 0.6 seconds.
+<br>
 
-In order to navigate to the intended branch and directory to test  this code, please follow these instructions:
+*Note: this is the faster version.*
+
+These edits pertain to the rpicam_jpeg.cpp file, and by restructuring the camera configuration and removing redundant code, image capture has been reduced from roughly 5.5 seconds to **0.6** seconds.
+
+In order to navigate to the intended branch and directory to test this code, please follow these instructions:
 
 ```sh
 git checkout alistair_branch
@@ -199,10 +261,26 @@ For a basic image capture:
 libcamera-jpeg -o test.jpg
 ```
 
-4. daniel's branch
+<br>
+
+### External App [danBranch]:
+
+<br>
 
 ```sh
 git checkout danBranch
 cd rpicam-apps
 make
+```
+
+<br>
+
+### External App [andrei-new-app]:
+
+<br>
+
+```sh
+git checkout andrei-new-app
+cd andrei-libcamera/src
+g++ andrei-libcamera.cpp -I/usr/local/include/libcamera -lcamera
 ```
