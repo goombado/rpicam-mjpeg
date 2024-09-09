@@ -100,3 +100,7 @@ ssh <username>@<IP address>
 
 ### Side notes
 For our purposes, we want to do something called X forwarding, on your terminal when you ssh, add the -X or -Y flag (will look into the differences), and when you run for example rpicam-hello you want to add the "--qt-preview" flag.
+
+### Code Review Instructions
+
+test
