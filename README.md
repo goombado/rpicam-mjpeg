@@ -257,8 +257,9 @@ In order to navigate to the intended branch and directory to test this code, ple
 
 ```sh
 git checkout alistair_branch
+pip install -r requirements.txt
 cd rpicam-apps
-make build
+make
 ```
 
 You should now be able to execute image capture commands with significantly reduced execution time.
