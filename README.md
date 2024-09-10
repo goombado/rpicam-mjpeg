@@ -39,10 +39,10 @@ Our Documentation in Confluence can be found at [https://comp3888-m12-02-2024.at
 
 ## Setup
 
-1.   Clone the repository and enter the directory. Ensure you have the `--recurse-submodules` flag so that `libcamera-async` is also cloned.
+1.   Clone the repository and enter the directory.
 
      ```sh
-     git clone --recurse-submodules https://github.com/consiliumsolutions/p05c-rpi-gpu
+     git clone https://github.com/consiliumsolutions/p05c-rpi-gpu
      cd p05c-rpi-gpu
      ```
 
@@ -55,14 +55,11 @@ Our Documentation in Confluence can be found at [https://comp3888-m12-02-2024.at
 
 ## Making changes
 
-**IMPORTANT: IF MAKING CHANGES TO `libcamera-async`, YOU MUST DO THAT IN THE REPOSITORY ITSELF: [https://github.com/COMP3888-M12-02-2024/libcamera-async](https://github.com/COMP3888-M12-02-2024/libcamera-async)**
-
-Before making any new changes, create a new branch and fetch any changes that have been made to the libcamera submodule. Importantly, you must update the submodule **after** you have checked out your new branch, and `git pull` **before** checking out.
+Before making any new changes, create a new branch and fetch any changes that have been made.
 
 ```sh
 git pull
 git checkout -b branch_name
-git submodule update --remote --merge
 ```
 
 After doing some work, make sure to add, commit and push.
@@ -137,7 +134,18 @@ For our purposes, we want to do something called X forwarding, on your terminal 
 ## Build Instructions
 
 ### libcamera Build:
+As of a week ago, libcamera now requires the dependency ```libpisp``` to build correctly, so first you must clone and build ```libpisp```:
 ```sh
+git clone https://github.com/raspberrypi/libpisp
+cd libpisp
+meson setup build
+meson compile -C build
+sudo meson install -C build
+```
+Once this is complete, follow the next instructions to correctly install libcamera
+```sh
+git clone https://github.com/raspberrypi/libcamera
+
 sudo apt install libboost-dev libgnutls28-dev openssl libtiff-dev pybind11-dev qtbase5-dev libqt5core5a libqt5widgets5 meson cmake python3-yaml python3-ply libglib2.0-dev libgstreamer-plugins-base1.0-dev
 
 cd libcamera
@@ -188,7 +196,7 @@ make
 <br>
 
 ## Code Review Instructions
-
+All of our code requires ```libcamera``` to be built, so follow the above instructions to ensure you have the latest libcamera built in your environment.
 ### Two Preview Windows:
 
 <br>
@@ -293,11 +301,13 @@ make
 <br>
 
 ### External App [andrei-new-app]:
-
+This app is meant to be a proof of concept of libcamera's ability to be configured for multiple custom streams. There is currently no preview or recording, but printed to the command line is configuration similar to that of ```rpicam-apps```. Due to specificities in individual cameras, there will likely be error messages that appear. However the main thing is to show that libcamera does inherently support multiple "simultaneous" streams, as this app shows at a rudimentary level.
 <br>
 
 ```sh
 git checkout andrei-new-app
-cd andrei-libcamera/src
-g++ andrei-libcamera.cpp -I/usr/local/include/libcamera -lcamera
+cd andrei-libcamera
+make
+cd build
+./main
 ```
