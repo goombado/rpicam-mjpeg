@@ -261,6 +261,23 @@ For a basic image capture:
 libcamera-jpeg -o test.jpg
 ```
 
+For performance testing of image capture, navigate to the tests/scripts directory and then execute benchmark_libcamera.sh by the following:
+
+```sh
+cd tests/scripts
+chmod +x benchmark_libcamera.sh
+./benchmark_libcamera.sh
+```
+
+This will run the image capture command 20 times, outputting the execution time in milliseconds to data/timings.txt in real-time. You can compare this with the old_timings.txt in /data, which is from the same testcase run on the old version of rpicam_jpeg to see the difference (90% reduction).
+
+To see a benchmark plot of the two versions of rpicam_jpeg, run analyse_timings.py:
+
+```sh
+python analyse_timings.py
+```
+This testcase assesses the performance of the new rpicam_jpeg, ensuring a consistent reduction in execution time. The produced plot is located in /data. 
+
 <br>
 
 ### External App [danBranch]:
