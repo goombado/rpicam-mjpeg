@@ -290,14 +290,23 @@ This testcase assesses the performance of the new rpicam_jpeg, ensuring a consis
 <br>
 
 ### External App [danBranch]:
+The following two branches are dedicated to creating a brand new ```libcamera```-based app altogether. Both will still show errors when being run, but correctly compile.
+
 
 <br>
 
 ```sh
 git checkout danBranch
-cd rpicam-apps
-make
+cd dancam_apps/src
+g++ -o dancam_still dancam_still.cpp -I/usr/local/include/libcamera -lcamera -lcamera-base
+./dancam_still
 ```
+
+The next steps in this implementation are as follows:
+1. Complete a still image capture
+2. Change the program such that instead of only capturing one frame, it continuously capture to form a video, which will become the preview window as required
+3. Using the different captured frames, do motion detection (Possibly using openCV or maybe other libraries)
+4. Combine the three functionality into one CLI app, which will then can be easily ported to web interface
 
 <br>
 
