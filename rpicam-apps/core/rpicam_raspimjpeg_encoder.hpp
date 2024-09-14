@@ -159,9 +159,14 @@ protected:
 		StreamInfo info;
 		VideoStream(&info);
 		if (!info.width || !info.height || !info.stride)
-			throw std::runtime_error("lores stream is not configured");
+			throw std::runtime_error("preview stream is not configured");
 		VideoOptions *options = GetOptions();
-		options->output = "lores.mp4";
+		options->output = "preview.mp4";
+		// options->width = 1280;
+		// options->height = 720;
+		// info.width = 1280;
+		// info.height = 720;
+		// the above didn't work, just took the full image and cropped it to 720p
 		encoder_preview_ = std::unique_ptr<Encoder>(Encoder::Create(options, info));
 	}
 

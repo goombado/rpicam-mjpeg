@@ -618,6 +618,7 @@ void RPiCamApp::ConfigureRaspiMJPEG()
 	StreamConfiguration &cfg = configuration_->at(0);
 	StreamConfiguration &cfgv = configuration_->at(1);
 	cfg.pixelFormat = libcamera::formats::YUV420;
+	cfgv.pixelFormat = libcamera::formats::YUV420;
 	cfg.bufferCount = 6; // 6 buffers is better than 4
 	cfgv.bufferCount = 6;
 	if (options_->buffer_count > 0) {
