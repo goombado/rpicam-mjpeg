@@ -603,6 +603,71 @@ void RPiCamApp::ConfigureVideo(unsigned int flags)
 	LOG(2, "Video setup complete");
 }
 
+void RPiCamApp::ConfigureRaspiMJPEG()
+{
+	LOG(2, "Configuring RaspiMJPEG streams...");
+
+	// first we setup MJPEG, full quality and preview streams respectively
+	StreamRoles stream_roles = { StreamRole::VideoRecording, StreamRole::VideoRecording, StreamRole::Viewfinder };
+	int lores_index = 2;
+	configuration_ = camera_->generateConfiguration(stream_roles);
+	if (!configuration_)
+		throw std::runtime_error("failed to generate video configuration");
+
+	// Now we get to override any of the default settings from the options_->
+	StreamConfiguration &cfg = configuration_->at(0);
+	StreamConfiguration &cfgv = configuration_->at(1);
+	cfg.pixelFormat = libcamera::formats::YUV420;
+	cfg.bufferCount = 6; // 6 buffers is better than 4
+	cfgv.bufferCount = 6;
+	if (options_->buffer_count > 0) {
+		cfg.bufferCount = options_->buffer_count;
+		cfgv.bufferCount = options_->buffer_count;
+	}
+	if (options_->width) {
+		cfg.size.width = options_->width;
+		cfgv.size.width = options_->width;
+	}
+	if (options_->height) {
+		cfg.size.height = options_->height;
+		cfgv.size.height = options_->height;
+	}
+	cfg.colorSpace = libcamera::ColorSpace::Sycc;
+	if (cfgv.size.width >= 1280 || cfgv.size.height >= 720) {
+		cfgv.colorSpace = libcamera::ColorSpace::Rec709;
+	}
+	else {
+		cfgv.colorSpace = libcamera::ColorSpace::Smpte170m;
+	}
+
+	configuration_->orientation = libcamera::Orientation::Rotate0 * options_->transform;
+
+	// post_processor_.AdjustConfig("video", &configuration_->at(0));
+
+	Size lores_size(options_->lores_width, options_->lores_height);
+	lores_size.alignDownTo(2, 2);
+	if (lores_size.width > configuration_->at(0).size.width ||
+		lores_size.height > configuration_->at(0).size.height) {
+		throw std::runtime_error("Low res image larger than video");
+	}
+	configuration_->at(lores_index).pixelFormat = lores_format_;
+	configuration_->at(lores_index).size = lores_size;
+	configuration_->at(lores_index).bufferCount = configuration_->at(0).bufferCount;
+
+	configuration_->orientation = libcamera::Orientation::Rotate0 * options_->transform;
+
+	configureDenoise(options_->denoise == "auto" ? "cdn_fast" : options_->denoise);
+	setupCapture();
+
+	streams_["mjpeg"] = configuration_->at(0).stream();
+	streams_["video"] = configuration_->at(1).stream();
+	streams_["preview"] = configuration_->at(lores_index).stream();
+
+	// post_processor_.Configure();
+
+	LOG(2, "Video setup complete");
+}
+
 void RPiCamApp::Teardown()
 {
 	stopPreview();
@@ -903,6 +968,16 @@ libcamera::Stream *RPiCamApp::RawStream(StreamInfo *info) const
 libcamera::Stream *RPiCamApp::VideoStream(StreamInfo *info) const
 {
 	return GetStream("video", info);
+}
+
+libcamera::Stream *RPiCamApp::MJPEGStream(StreamInfo *info) const
+{
+	return GetStream("mjpeg", info);
+}
+
+libcamera::Stream *RPiCamApp::PreviewStream(StreamInfo *info) const
+{
+	return GetStream("preview", info);
 }
 
 libcamera::Stream *RPiCamApp::LoresStream(StreamInfo *info) const
