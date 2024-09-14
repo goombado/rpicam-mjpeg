@@ -608,8 +608,8 @@ void RPiCamApp::ConfigureRaspiMJPEG()
 	LOG(2, "Configuring RaspiMJPEG streams...");
 
 	// first we setup MJPEG, full quality and preview streams respectively
-	StreamRoles stream_roles = { StreamRole::VideoRecording, StreamRole::VideoRecording, StreamRole::Viewfinder };
-	int lores_index = 2;
+	StreamRoles stream_roles = { StreamRole::VideoRecording, StreamRole::VideoRecording };
+	// int lores_index = 2;
 	configuration_ = camera_->generateConfiguration(stream_roles);
 	if (!configuration_)
 		throw std::runtime_error("failed to generate video configuration");
@@ -644,15 +644,15 @@ void RPiCamApp::ConfigureRaspiMJPEG()
 
 	// post_processor_.AdjustConfig("video", &configuration_->at(0));
 
-	Size lores_size(options_->lores_width, options_->lores_height);
-	lores_size.alignDownTo(2, 2);
-	if (lores_size.width > configuration_->at(0).size.width ||
-		lores_size.height > configuration_->at(0).size.height) {
-		throw std::runtime_error("Low res image larger than video");
-	}
-	configuration_->at(lores_index).pixelFormat = lores_format_;
-	configuration_->at(lores_index).size = lores_size;
-	configuration_->at(lores_index).bufferCount = configuration_->at(0).bufferCount;
+	// Size lores_size(options_->lores_width, options_->lores_height);
+	// lores_size.alignDownTo(2, 2);
+	// if (lores_size.width > configuration_->at(0).size.width ||
+	// 	lores_size.height > configuration_->at(0).size.height) {
+	// 	throw std::runtime_error("Low res image larger than video");
+	// }
+	// configuration_->at(lores_index).pixelFormat = lores_format_;
+	// configuration_->at(lores_index).size = lores_size;
+	// configuration_->at(lores_index).bufferCount = configuration_->at(0).bufferCount;
 
 	configuration_->orientation = libcamera::Orientation::Rotate0 * options_->transform;
 
@@ -661,7 +661,7 @@ void RPiCamApp::ConfigureRaspiMJPEG()
 
 	streams_["mjpeg"] = configuration_->at(0).stream();
 	streams_["video"] = configuration_->at(1).stream();
-	streams_["preview"] = configuration_->at(lores_index).stream();
+	// streams_["preview"] = configuration_->at(lores_index).stream();
 
 	// post_processor_.Configure();
 

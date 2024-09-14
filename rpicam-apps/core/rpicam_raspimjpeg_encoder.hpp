@@ -29,6 +29,8 @@ public:
 		StartEncoderMJPEG();
 		StartEncoderVideo();
 		StartEncoderPreview();
+		VideoOptions* options = GetOptions();
+		options->output = "test.mjpeg"; // a hack for now, i hate pointers
 	}
 
 	void StartEncoderMJPEG()
@@ -134,7 +136,10 @@ protected:
 			throw std::runtime_error("mjpeg stream is not configured");
 		VideoOptions *options = GetOptions();
 		options->output = "test.mjpeg";
-		encoder_mjpeg_ = std::unique_ptr<Encoder>(Encoder::Create(options, info));
+		options->codec = "mjpeg";
+		options->quality = 50;
+		VideoOptions *mjpeg_options(options);
+		encoder_mjpeg_ = std::unique_ptr<Encoder>(Encoder::Create(mjpeg_options, info));
 	}
 
 	virtual void createEncoderVideo()
@@ -144,19 +149,20 @@ protected:
 		if (!info.width || !info.height || !info.stride)
 			throw std::runtime_error("video stream is not configured");
 		VideoOptions *options = GetOptions();
-		options->output = "test.h264";
-		encoder_mjpeg_ = std::unique_ptr<Encoder>(Encoder::Create(options, info));
+		options->output = "test.mp4";
+		options->codec = "h264";
+		encoder_video_ = std::unique_ptr<Encoder>(Encoder::Create(options, info));
 	}
 
 	virtual void createEncoderPreview()
 	{
 		StreamInfo info;
-		LoresStream(&info);
+		VideoStream(&info);
 		if (!info.width || !info.height || !info.stride)
 			throw std::runtime_error("lores stream is not configured");
 		VideoOptions *options = GetOptions();
-		options->output = "lores.h264";
-		encoder_mjpeg_ = std::unique_ptr<Encoder>(Encoder::Create(options, info));
+		options->output = "lores.mp4";
+		encoder_preview_ = std::unique_ptr<Encoder>(Encoder::Create(options, info));
 	}
 
 	std::unique_ptr<Encoder> encoder_mjpeg_;

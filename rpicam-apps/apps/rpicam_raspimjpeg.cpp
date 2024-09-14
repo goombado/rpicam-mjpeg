@@ -67,12 +67,17 @@ static void event_loop(RPiCamRaspiMJPEGEncoder &app)
 {
 	VideoOptions *options_temp = app.GetOptions();
     options_temp->output = "test.mjpeg";
-    const VideoOptions *options_mjpeg = options_temp;
+    options_temp->codec = "mjpeg";
+    options_temp->quality = 50;
+    const VideoOptions *options_mjpeg(options_temp);
 	std::unique_ptr<Output> output_mjpeg = std::unique_ptr<Output>(Output::Create(options_mjpeg));
-    options_temp->output = "test.h264";
+    
+    options_temp->output = "test.mp4";
+    options_temp->codec = "h264";
     const VideoOptions *options_video = options_temp;
     std::unique_ptr<Output> output_video = std::unique_ptr<Output>(Output::Create(options_video));
-    options_temp->output = "preview.h264";
+    
+    options_temp->output = "preview.mp4";
     const VideoOptions *options_preview = options_temp;
     std::unique_ptr<Output> output_preview = std::unique_ptr<Output>(Output::Create(options_preview));
 
@@ -82,6 +87,7 @@ static void event_loop(RPiCamRaspiMJPEGEncoder &app)
 	app.SetMetadataReadyCallback(std::bind(&Output::MetadataReady, output_video.get(), _1));
 
     VideoOptions const *options = app.GetOptions();
+
 
 	app.OpenCamera();
     app.ConfigureRaspiMJPEG();
@@ -131,13 +137,14 @@ static void event_loop(RPiCamRaspiMJPEGEncoder &app)
 													  << " milliseconds.");
 			app.StopCamera(); // stop complains if encoder very slow to close
 			app.StopEncoders();
+
 			return;
 		}
 
 		CompletedRequestPtr &completed_request = std::get<CompletedRequestPtr>(msg.payload);
 		app.EncodeBufferMJPEG(completed_request, app.MJPEGStream());
         app.EncodeBufferVideo(completed_request, app.VideoStream());
-        app.EncodeBufferPreview(completed_request, app.PreviewStream());
+        app.EncodeBufferPreview(completed_request, app.VideoStream());
 	}
 }
 
