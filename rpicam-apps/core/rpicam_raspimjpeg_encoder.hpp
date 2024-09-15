@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2020, Raspberry Pi (Trading) Ltd.
  *
- * rpicam_encoder.cpp - libcamera video encoding class.
+ * rpicam_raspimjpeg_encoder.cpp - libcamera video encoding class.
  */
 
 #pragma once
@@ -12,6 +12,18 @@
 #include "core/video_options.hpp"
 
 #include "encoder/encoder.hpp"
+
+/**
+ * @brief RPiCamRaspiMJPEGEncoder
+ * 
+ * @details This class is an interpretation of the RPiCamEncoder class.
+ * It serves to extract three separate streams of data from a single camera.
+ * The three streams are:
+ * 1. MJPEG
+ * 2. Video
+ * 3. Preview
+ */
+
 
 typedef std::function<void(void *, size_t, int64_t, bool)> EncodeOutputReadyCallback;
 typedef std::function<void(libcamera::ControlList &)> MetadataReadyCallback;
@@ -56,6 +68,7 @@ public:
 	void SetEncodeOutputReadyCallbackMJPEG(EncodeOutputReadyCallback callback) { encode_output_ready_callback_mjpeg_ = callback; }
 	void SetEncodeOutputReadyCallbackVideo(EncodeOutputReadyCallback callback) { encode_output_ready_callback_video_ = callback; }
 	void SetEncodeOutputReadyCallbackPreview(EncodeOutputReadyCallback callback) { encode_output_ready_callback_preview_ = callback; }
+	
 	void SetMetadataReadyCallback(MetadataReadyCallback callback) { metadata_ready_callback_ = callback; }
 	
 	void EncodeBufferMJPEG(CompletedRequestPtr &completed_request, Stream *stream)
@@ -221,14 +234,18 @@ private:
 		}
 	}
 
+
 	std::queue<CompletedRequestPtr> encode_buffer_queue_mjpeg_;
 	std::queue<CompletedRequestPtr> encode_buffer_queue_video_;
 	std::queue<CompletedRequestPtr> encode_buffer_queue_preview_;
+
 	std::mutex encode_buffer_queue_mjpeg_mutex_;
 	std::mutex encode_buffer_queue_video_mutex_;
 	std::mutex encode_buffer_queue_preview_mutex_;
+
 	EncodeOutputReadyCallback encode_output_ready_callback_mjpeg_;
 	EncodeOutputReadyCallback encode_output_ready_callback_video_;
 	EncodeOutputReadyCallback encode_output_ready_callback_preview_;
+
 	MetadataReadyCallback metadata_ready_callback_;
 };
