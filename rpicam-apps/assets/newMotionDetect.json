@@ -1,0 +1,11 @@
+{
+    "sobel_cv":
+    {
+        "ksize" :5
+    },
+
+    "internal_motion_detect" :
+    {
+        
+    }
+}
