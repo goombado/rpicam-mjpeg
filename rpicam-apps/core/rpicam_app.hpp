@@ -137,7 +137,7 @@ public:
 	void ConfigureViewfinder();
 	void ConfigureStill(unsigned int flags = FLAG_STILL_NONE);
 	void ConfigureVideo(unsigned int flags = FLAG_VIDEO_NONE);
-	void ConfigureRaspiMJPEG();
+	void ConfigureMJPEG(bool image_stream = false);
 	void ConfigureZsl(unsigned int still_flags = FLAG_STILL_NONE);
 
 	void Teardown();
