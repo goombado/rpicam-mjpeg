@@ -15,8 +15,11 @@ struct MJPEGOptions : public VideoOptions
         /*
         Here we are adding in the options that were in the original RaspiMJPEG app.
 
-        Note, the following features are no longer supported:
         Look here: https://www.raspberrypi.com/documentation/computers/camera_software.html#differences-between-rpicam-and-raspicam 
+
+        Documentation regarding porting of previous features from RaspiCAM: https://docs.google.com/document/d/19grw-U_GrXwHwHhGO39kM3aB3IjCONBWZC7nOWAJiBI/edit?usp=sharing
+
+        Deprecater Features:
         - opacity (--opacity)
         - image effects (--imxfx)
         - colour effects (--colfx)
