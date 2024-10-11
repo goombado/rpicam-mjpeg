@@ -1,8 +1,16 @@
-#include <libcamera/stream.h> 
+#include <algorithm>
+#include <chrono>
+#include <iostream>
+#include <iterator>
+#include <libcamera/stream.h>
+#include <memory>
+#include <vector>
 
 #include "core/rpicam_app.hpp"
 
 #include "post_processing_stages/post_processing_stage.hpp"
+
+#include "opencv2/opencv.hpp"
 
 using Stream = libcamera::Stream;
 
@@ -34,12 +42,19 @@ class internalMotionDetectStage : public PostProcessingStage{
         void TearDown() override;
 
     private:
-        int motion_noise; // If difference between frames is less than this, ignore it
-        int motion_threshold; // If difference between frames is greater than this, consider it motion
-        char* motion_image; // Grayscale binary mask image
-        int motion_initframes; // Number of frames to wait at the start before checking for motion
-        int motion_startframes; // If motion is detected for this amount of frames consectutively, then it is considered motion
-        int motion_stopframes; // Once motion is no longer detected for this amount of frames, then we stop the motion event
-        char* motion_pipe; // Path to the named pipe to write motion events to
-        int motion_file; 
+
+    // parameters from json file
+
+        int motion_noise_; // If difference between frames is less than this, ignore it
+        int motion_threshold_; // If difference between frames is greater than this, consider it motion
+        char* motion_image_; // Grayscale binary mask image
+        int motion_initframes_; // Number of frames to wait at the start before checking for motion
+        int motion_startframes_; // If motion is detected for this amount of frames consectutively, then it is considered motion
+        int motion_stopframes_; // Once motion is no longer detected for this amount of frames, then we stop the motion event
+        char* motion_pipe_; // Path to the named pipe to write motion events to
+        int motion_file_; 
+
+    // parameters needed for motion detection 
+        Stream *stream_;
+        StreamInfo low_res_info_;
 }

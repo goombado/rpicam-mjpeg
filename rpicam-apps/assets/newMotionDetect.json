@@ -1,14 +1,9 @@
 {
-    "sobel_cv":
-    {
-        "ksize" :5
-    },
-
     "internal_motion_detect" :
     {
         "motion_noise": 20,
         "motion_threshold": 100,
-        "motion_image": "mask.pgm",
+        "motion_image": "test1GrayScalePGM.pgm",
         "motion_initframes" : 0,
         "motion_startframes" : 5,
         "motion_stopframes" : 50,
