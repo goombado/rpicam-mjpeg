@@ -137,7 +137,7 @@ public:
 	void ConfigureViewfinder();
 	void ConfigureStill(unsigned int flags = FLAG_STILL_NONE);
 	void ConfigureVideo(unsigned int flags = FLAG_VIDEO_NONE);
-	void ConfigureMJPEG(bool image_stream = false);
+	void ConfigureMJPEG();
 	void ConfigureZsl(unsigned int still_flags = FLAG_STILL_NONE);
 
 	void Teardown();
@@ -152,8 +152,6 @@ public:
 	Stream *StillStream(StreamInfo *info = nullptr) const;
 	Stream *RawStream(StreamInfo *info = nullptr) const;
 	Stream *VideoStream(StreamInfo *info = nullptr) const;
-	Stream *MJPEGStream(StreamInfo *info = nullptr) const;
-	Stream *PreviewStream(StreamInfo *info = nullptr) const;
 	Stream *LoresStream(StreamInfo *info = nullptr) const;
 	Stream *GetMainStream() const;
 
@@ -251,6 +249,7 @@ private:
 	void previewThread();
 	void configureDenoise(const std::string &denoise_mode);
 	Mode selectMode(const Mode &mode) const;
+	Mode selectHighestMode(const Mode &mode) const;
 
 	std::unique_ptr<CameraManager> camera_manager_;
 	std::shared_ptr<Camera> camera_;

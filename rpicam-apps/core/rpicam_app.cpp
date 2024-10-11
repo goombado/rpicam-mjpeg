@@ -275,6 +275,21 @@ Mode RPiCamApp::selectMode(const Mode &mode) const
 	return { best_mode.size.width, best_mode.size.height, best_mode.depth(), mode.packed };
 }
 
+Mode RPiCamApp::selectHighestMode(const Mode &mode) const
+{
+	SensorMode highest_mode;
+
+	for (const auto &sensor_mode : sensor_modes_)
+	{
+		if (sensor_mode.size.width > highest_mode.size.width) {
+			highest_mode.size = sensor_mode.size;
+			highest_mode.format = sensor_mode.format;
+		}
+	}
+
+	return { highest_mode.size.width, highest_mode.size.height, highest_mode.depth(), mode.packed };
+}
+
 void RPiCamApp::ConfigureViewfinder()
 {
 	LOG(2, "Configuring viewfinder...");
@@ -566,7 +581,7 @@ void RPiCamApp::ConfigureVideo(unsigned int flags)
 	if (!options_->no_raw)
 	{
 		options_->mode.update(configuration_->at(0).size, options_->framerate);
-		options_->mode = selectMode(options_->mode);
+		options_->mode = selectHighestMode(options_->mode);
 
 		configuration_->at(1).size = options_->mode.Size();
 		configuration_->at(1).pixelFormat = mode_to_pixel_format(options_->mode);
@@ -604,20 +619,15 @@ void RPiCamApp::ConfigureVideo(unsigned int flags)
 }
 
 
-void RPiCamApp::ConfigureMJPEG(bool image_stream)
+void RPiCamApp::ConfigureMJPEG()
 {
 	LOG(2, "Configuring MJPEG...");
 
-	// Stream 1: MJPEG stream -> colourspace conversion for H264
-	// Stream 2: Lores stream for motion capture
-	// Optional image_stream -> RAW stream for image capture.
-	// Given as optional due to speed vs quality tradeoff.
-	// If RAW configured initially, speed of photo will be faster but
-	// potentially at the cost of reduced quality MJPEG/video stream.
-	StreamRoles stream_roles = { StreamRole::VideoRecording, StreamRole::Viewfinder};
-	if (image_stream) {
-		stream_roles.push_back(StreamRole::Raw);
-	}
+	// Stream 1: H264 Video Recording Stream
+	// Stream 2: Lores stream for MJPEG and motion detection post-processing
+	// Stream 3: image_stream -> RAW stream for image capture
+	StreamRoles stream_roles = { StreamRole::VideoRecording, StreamRole::Viewfinder, StreamRole::Raw };
+
 	configuration_ = camera_->generateConfiguration(stream_roles);
 
 	if (!configuration_)
@@ -633,13 +643,56 @@ void RPiCamApp::ConfigureMJPEG(bool image_stream)
 		cfg.size.width = options_->width;
 	if (options_->height)
 		cfg.size.height = options_->height;
-	cfg.colorSpace = libcamera::ColorSpace::Sycc; // MJPEG is in sYCC
+
+	// VideoRecording stream should be in Rec709 color space
+	if (cfg.size.width >= 1280 || cfg.size.height >= 720)
+		cfg.colorSpace = libcamera::ColorSpace::Rec709;
+	else
+		cfg.colorSpace = libcamera::ColorSpace::Smpte170m;
 	configuration_->orientation = libcamera::Orientation::Rotate0 * options_->transform;
 
 	post_processor_.AdjustConfig("video", &configuration_->at(0));
 
+	// next configure the lores Viewfinder stream
+	// we want to make this similar to the current rpicam-apps lores stream
+
+	Size lores_size(options_->lores_width, options_->lores_height);
+	lores_size.alignDownTo(2, 2);
+	if (lores_size.width > configuration_->at(0).size.width ||
+		lores_size.height > configuration_->at(0).size.height)
+		throw std::runtime_error("Low resolution stream larger than video");
+	configuration_->at(1).pixelFormat = lores_format_;
+	configuration_->at(1).size = lores_size;
+	configuration_->at(1).bufferCount = configuration_->at(0).bufferCount;
+	// MJPEG should be in sYCC colour space
+	// this should be converted to RGB before post processing
+	configuration_->at(1).colorSpace = libcamera::ColorSpace::Sycc;
+
+	// TODO: CHANGE TO RAW MODE
+	// currently this sets RAW to be configured the same as the VideoRecording stream
+	// but we want RAW to be configured to be the highest resolution possible
+	// or to the manually supplied (not yet existing) raw_mode
+	options_->mode.update(configuration_->at(0).size, options_->framerate);
+	options_->mode = selectHighestMode(options_->mode);
+
+	configuration_->at(2).size = options_->mode.Size();
+	configuration_->at(2).pixelFormat = mode_to_pixel_format(options_->mode);
+	configuration_->sensorConfig = libcamera::SensorConfiguration();
+	configuration_->sensorConfig->outputSize = options_->mode.Size();
+	configuration_->sensorConfig->bitDepth = options_->mode.bit_depth;
+	configuration_->at(2).bufferCount = configuration_->at(0).bufferCount;
 
 
+	configureDenoise(options_->denoise == "auto" ? "cdn_fast" : options_->denoise);
+	setupCapture();
+
+	streams_["video"] = configuration_->at(0).stream();
+	streams_["lores"] = configuration_->at(1).stream();
+	streams_["raw"] = configuration_->at(2).stream();
+
+	post_processor_.Configure();
+
+	LOG(2, "MJPEG setup complete");
 
 }
 
@@ -944,16 +997,6 @@ libcamera::Stream *RPiCamApp::RawStream(StreamInfo *info) const
 libcamera::Stream *RPiCamApp::VideoStream(StreamInfo *info) const
 {
 	return GetStream("video", info);
-}
-
-libcamera::Stream *RPiCamApp::MJPEGStream(StreamInfo *info) const
-{
-	return GetStream("mjpeg", info);
-}
-
-libcamera::Stream *RPiCamApp::PreviewStream(StreamInfo *info) const
-{
-	return GetStream("preview", info);
 }
 
 libcamera::Stream *RPiCamApp::LoresStream(StreamInfo *info) const
