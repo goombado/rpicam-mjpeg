@@ -39,7 +39,7 @@ class internalMotionDetectStage : public PostProcessingStage{
         void Stop() override;
 
         // Use this as a destructor for configure() to deallocate resources
-        void TearDown() override;
+        void Teardown() override;
 
     private:
 
@@ -47,14 +47,20 @@ class internalMotionDetectStage : public PostProcessingStage{
 
         int motion_noise_; // If difference between frames is less than this, ignore it
         int motion_threshold_; // If difference between frames is greater than this, consider it motion
-        char* motion_image_; // Grayscale binary mask image
+        std::string motion_image_; // Grayscale binary mask image
         int motion_initframes_; // Number of frames to wait at the start before checking for motion
         int motion_startframes_; // If motion is detected for this amount of frames consectutively, then it is considered motion
         int motion_stopframes_; // Once motion is no longer detected for this amount of frames, then we stop the motion event
-        char* motion_pipe_; // Path to the named pipe to write motion events to
+        std::string motion_pipe_; // Path to the named pipe to write motion events to
         int motion_file_; 
 
     // parameters needed for motion detection 
         Stream *stream_;
         StreamInfo low_res_info_;
-}
+
+        cv::Mat current_frame_;
+        int frame_counter;
+        int motion_frame_counter;
+        int no_motion_counter;
+        cv::Mat prev_frame;
+};

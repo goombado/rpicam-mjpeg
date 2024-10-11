@@ -48,6 +48,7 @@ if opencv_dep.found()
         'annotate_cv_stage.cpp',
         'plot_pose_cv_stage.cpp',
         'object_detect_draw_cv_stage.cpp',
+        'internal_motion_detect.cpp',
     ])
 
     # OpenCV assets
@@ -116,6 +117,7 @@ post_processing_headers = files([
     'pwl.hpp',
     'segmentation.hpp',
     'tf_stage.hpp',
+    'internal_motion_detect.hpp',
 ])
 
 install_headers(post_processing_headers, subdir: meson.project_name() / 'post_processing_stages')
