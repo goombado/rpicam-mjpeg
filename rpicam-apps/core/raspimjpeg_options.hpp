@@ -24,7 +24,7 @@ struct RaspiMJPEGOptions : public VideoOptions
     {
         VideoOptions::Print();
         std::cerr << "    output-mjpeg: " << output_mjpeg << std::endl;
-        std::cerr << "    output-preview: " <<output_preview << std::endl;
+        std::cerr << "    output-preview: " << output_preview << std::endl;
     }
 
     std::string output_mjpeg;

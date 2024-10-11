@@ -14,6 +14,7 @@
 
 #include "core/rpicam_raspimjpeg_encoder.hpp"
 #include "output/output.hpp"
+#include "core/mjpeg_options.hpp"
 
 using namespace std::placeholders;
 
@@ -150,14 +151,16 @@ static void event_loop(RPiCamRaspiMJPEGEncoder &app)
 
 int main(int argc, char *argv[])
 {
+
 	try
 	{
 		RPiCamRaspiMJPEGEncoder app;
-		VideoOptions *options = app.GetOptions();
-		if (options->Parse(argc, argv))
+		MJPEGOptions mjpeg_options;
+
+		if (mjpeg_options.Parse(argc, argv))
 		{
-			if (options->verbose >= 2)
-				options->Print();
+			if (mjpeg_options.verbose >= 2)
+				mjpeg_options.Print();
 
 			event_loop(app);
 		}
