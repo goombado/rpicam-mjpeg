@@ -137,7 +137,6 @@ public:
 	void ConfigureViewfinder();
 	void ConfigureStill(unsigned int flags = FLAG_STILL_NONE);
 	void ConfigureVideo(unsigned int flags = FLAG_VIDEO_NONE);
-	void ConfigureMJPEG();
 	void ConfigureZsl(unsigned int still_flags = FLAG_STILL_NONE);
 
 	void Teardown();
@@ -184,6 +183,27 @@ public:
 		return cameras;
 	}
 
+	static libcamera::PixelFormat RPiCamApp::mode_to_pixel_format(Mode const &mode)
+	{
+		// The saving grace here is that we can ignore the Bayer order and return anything -
+		// our pipeline handler will give us back the order that works, whilst respecting the
+		// bit depth and packing. We may get a "stream adjusted" message, which we can ignore.
+		static std::vector<std::pair<Mode, libcamera::PixelFormat>> table = {
+			{ Mode(0, 0, 8, false), libcamera::formats::SBGGR8 },
+			{ Mode(0, 0, 8, true), libcamera::formats::SBGGR8 },
+			{ Mode(0, 0, 10, false), libcamera::formats::SBGGR10 },
+			{ Mode(0, 0, 10, true), libcamera::formats::SBGGR10_CSI2P },
+			{ Mode(0, 0, 12, false), libcamera::formats::SBGGR12 },
+			{ Mode(0, 0, 12, true), libcamera::formats::SBGGR12_CSI2P },
+		};
+
+		auto it = std::find_if(table.begin(), table.end(), [&mode] (auto &m) { return mode.bit_depth == m.first.bit_depth && mode.packed == m.first.packed; });
+		if (it != table.end())
+			return it->second;
+
+		return libcamera::formats::SBGGR12_CSI2P;
+	}
+
 	friend class BufferWriteSync;
 	friend class BufferReadSync;
 	friend class PostProcessor;
@@ -192,7 +212,7 @@ public:
 protected:
 	std::unique_ptr<Options> options_;
 
-private:
+
 	template <typename T>
 	class MessageQueue
 	{

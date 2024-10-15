@@ -63,3 +63,11 @@ Encoder *Encoder::Create(VideoOptions *options, const StreamInfo &info)
 		return new MjpegEncoder(options);
 	throw std::runtime_error("Unrecognised codec " + options->codec);
 }
+
+Encoder *Encoder::Create(MJPEGOptions *options, const StreamInfo &info)
+{
+	// For all intents and purposes, MJPEGOptions is a subclass of VideoOptions.
+	// This is not reflected in inheritance, but in the fact that MJPEGOptions
+	// contains all the fields of VideoOptions, plus some additional fields.
+	return Create((VideoOptions*) options, info);
+}

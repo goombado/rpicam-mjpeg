@@ -10,6 +10,7 @@
 #include "core/frame_info.hpp"
 #include "core/rpicam_app.hpp"
 #include "core/options.hpp"
+#include "core/mjpeg_options.hpp"
 
 #include <cmath>
 #include <fcntl.h>
@@ -26,27 +27,6 @@
 
 unsigned int RPiCamApp::verbosity = 1;
 
-static libcamera::PixelFormat mode_to_pixel_format(Mode const &mode)
-{
-	// The saving grace here is that we can ignore the Bayer order and return anything -
-	// our pipeline handler will give us back the order that works, whilst respecting the
-	// bit depth and packing. We may get a "stream adjusted" message, which we can ignore.
-
-	static std::vector<std::pair<Mode, libcamera::PixelFormat>> table = {
-		{ Mode(0, 0, 8, false), libcamera::formats::SBGGR8 },
-		{ Mode(0, 0, 8, true), libcamera::formats::SBGGR8 },
-		{ Mode(0, 0, 10, false), libcamera::formats::SBGGR10 },
-		{ Mode(0, 0, 10, true), libcamera::formats::SBGGR10_CSI2P },
-		{ Mode(0, 0, 12, false), libcamera::formats::SBGGR12 },
-		{ Mode(0, 0, 12, true), libcamera::formats::SBGGR12_CSI2P },
-	};
-
-	auto it = std::find_if(table.begin(), table.end(), [&mode] (auto &m) { return mode.bit_depth == m.first.bit_depth && mode.packed == m.first.packed; });
-	if (it != table.end())
-		return it->second;
-
-	return libcamera::formats::SBGGR12_CSI2P;
-}
 
 static void set_pipeline_configuration(Platform platform)
 {
@@ -581,7 +561,7 @@ void RPiCamApp::ConfigureVideo(unsigned int flags)
 	if (!options_->no_raw)
 	{
 		options_->mode.update(configuration_->at(0).size, options_->framerate);
-		options_->mode = selectHighestMode(options_->mode);
+		options_->mode = selectMode(options_->mode);
 
 		configuration_->at(1).size = options_->mode.Size();
 		configuration_->at(1).pixelFormat = mode_to_pixel_format(options_->mode);
@@ -618,83 +598,6 @@ void RPiCamApp::ConfigureVideo(unsigned int flags)
 	LOG(2, "Video setup complete");
 }
 
-
-void RPiCamApp::ConfigureMJPEG()
-{
-	LOG(2, "Configuring MJPEG...");
-
-	// Stream 1: H264 Video Recording Stream
-	// Stream 2: Lores stream for MJPEG and motion detection post-processing
-	// Stream 3: image_stream -> RAW stream for image capture
-	StreamRoles stream_roles = { StreamRole::VideoRecording, StreamRole::Viewfinder, StreamRole::Raw };
-
-	configuration_ = camera_->generateConfiguration(stream_roles);
-
-	if (!configuration_)
-		throw std::runtime_error("failed to generate MJPEG configuration");
-	
-	// Now we get to override any of the default settings from the options_->
-	StreamConfiguration &cfg = configuration_->at(0);
-	cfg.pixelFormat = libcamera::formats::YUV420;
-	cfg.bufferCount = 6; // 6 buffers is better than 4
-	if (options_->buffer_count > 0)
-		cfg.bufferCount = options_->buffer_count;
-	if (options_->width)
-		cfg.size.width = options_->width;
-	if (options_->height)
-		cfg.size.height = options_->height;
-
-	// VideoRecording stream should be in Rec709 color space
-	if (cfg.size.width >= 1280 || cfg.size.height >= 720)
-		cfg.colorSpace = libcamera::ColorSpace::Rec709;
-	else
-		cfg.colorSpace = libcamera::ColorSpace::Smpte170m;
-	configuration_->orientation = libcamera::Orientation::Rotate0 * options_->transform;
-
-	post_processor_.AdjustConfig("video", &configuration_->at(0));
-
-	// next configure the lores Viewfinder stream
-	// we want to make this similar to the current rpicam-apps lores stream
-
-	Size lores_size(options_->lores_width, options_->lores_height);
-	lores_size.alignDownTo(2, 2);
-	if (lores_size.width > configuration_->at(0).size.width ||
-		lores_size.height > configuration_->at(0).size.height)
-		throw std::runtime_error("Low resolution stream larger than video");
-	configuration_->at(1).pixelFormat = lores_format_;
-	configuration_->at(1).size = lores_size;
-	configuration_->at(1).bufferCount = configuration_->at(0).bufferCount;
-	// MJPEG should be in sYCC colour space
-	// this should be converted to RGB before post processing
-	configuration_->at(1).colorSpace = libcamera::ColorSpace::Sycc;
-
-	// TODO: CHANGE TO RAW MODE
-	// currently this sets RAW to be configured the same as the VideoRecording stream
-	// but we want RAW to be configured to be the highest resolution possible
-	// or to the manually supplied (not yet existing) raw_mode
-	options_->mode.update(configuration_->at(0).size, options_->framerate);
-	options_->mode = selectHighestMode(options_->mode);
-
-	configuration_->at(2).size = options_->mode.Size();
-	configuration_->at(2).pixelFormat = mode_to_pixel_format(options_->mode);
-	configuration_->sensorConfig = libcamera::SensorConfiguration();
-	configuration_->sensorConfig->outputSize = options_->mode.Size();
-	configuration_->sensorConfig->bitDepth = options_->mode.bit_depth;
-	configuration_->at(2).bufferCount = configuration_->at(0).bufferCount;
-
-
-	configureDenoise(options_->denoise == "auto" ? "cdn_fast" : options_->denoise);
-	setupCapture();
-
-	streams_["video"] = configuration_->at(0).stream();
-	streams_["lores"] = configuration_->at(1).stream();
-	streams_["raw"] = configuration_->at(2).stream();
-
-	post_processor_.Configure();
-
-	LOG(2, "MJPEG setup complete");
-
-}
 
 
 void RPiCamApp::Teardown()
