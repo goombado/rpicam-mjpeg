@@ -18,6 +18,7 @@ core_headers = files([
     'frame_info.hpp',
     'rpicam_app.hpp',
     'rpicam_encoder.hpp',
+    'rpicam_mjpeg_encoder.hpp',
     'logging.hpp',
     'metadata.hpp',
     'options.hpp',
@@ -26,6 +27,9 @@ core_headers = files([
     'stream_info.hpp',
     'version.hpp',
     'video_options.hpp',
+    'video_still_options.hpp',
+    'mjpeg_options.hpp',
+    'image_saver.hpp'
 ])
 
 # Generate a version string.

@@ -183,6 +183,8 @@ public:
 		return cameras;
 	}
 
+	static libcamera::PixelFormat mode_to_pixel_format(Mode const &mode);
+
 	friend class BufferWriteSync;
 	friend class BufferReadSync;
 	friend class PostProcessor;
@@ -191,7 +193,7 @@ public:
 protected:
 	std::unique_ptr<Options> options_;
 
-private:
+
 	template <typename T>
 	class MessageQueue
 	{
@@ -248,6 +250,7 @@ private:
 	void previewThread();
 	void configureDenoise(const std::string &denoise_mode);
 	Mode selectMode(const Mode &mode) const;
+	Mode selectHighestMode(const Mode &mode) const;
 
 	std::unique_ptr<CameraManager> camera_manager_;
 	std::shared_ptr<Camera> camera_;

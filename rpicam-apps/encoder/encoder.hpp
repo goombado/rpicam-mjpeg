@@ -11,6 +11,7 @@
 
 #include "core/stream_info.hpp"
 #include "core/video_options.hpp"
+#include "core/mjpeg_options.hpp"
 
 typedef std::function<void(void *)> InputDoneCallback;
 typedef std::function<void(void *, size_t, int64_t, bool)> OutputReadyCallback;
@@ -19,8 +20,11 @@ class Encoder
 {
 public:
 	static Encoder *Create(VideoOptions *options, StreamInfo const &info);
+	static Encoder *Create(MJPEGOptions *options, StreamInfo const &info);
 
 	Encoder(VideoOptions const *options) : options_(options) {}
+	Encoder(MJPEGOptions const *options) : mjpeg_options_(options) {}
+	
 	virtual ~Encoder() {}
 	// This is where the application sets the callback it gets whenever the encoder
 	// has finished with an input buffer, so the application can re-use it.
@@ -37,4 +41,5 @@ protected:
 	InputDoneCallback input_done_callback_;
 	OutputReadyCallback output_ready_callback_;
 	VideoOptions const *options_;
+	MJPEGOptions const *mjpeg_options_;
 };

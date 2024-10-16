@@ -47,6 +47,7 @@ void FileOutput::openFile(int64_t timestamp_us)
 		fp_ = stdout;
 	else if (!options_->output.empty())
 	{
+		LOG(2, "file output name not empty");
 		// Generate the next output file name.
 		char filename[256];
 		int n = snprintf(filename, sizeof(filename), options_->output.c_str(), count_);

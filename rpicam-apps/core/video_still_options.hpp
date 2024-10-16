@@ -1,9 +1,9 @@
-/* SPDX-License-Identifier: BSD-2-Clause */
-/*
- * Copyright (C) 2020, Raspberry Pi (Trading) Ltd.
- *
- * still_video.hpp - video capture program options
+/**
+ * Combination of video_options.cpp and still_options.cpp
+ * CHANGES:
+ *  - quality refers to MJPEG quality and new image_quality refers to JPEG quality
  */
+
 
 #pragma once
 
@@ -12,76 +12,17 @@
 #include <string>
 
 #include "options.hpp"
+#include "video_options.hpp"
+#include "still_options.hpp"
 
-struct Bitrate
+
+struct VideoStillOptions : public Options
 {
-public:
-	Bitrate() : bps_(0) {}
-
-	void set(const std::string &s)
-	{
-		static const std::map<std::string, uint64_t> match
-		{
-			{ "bps", 1 },
-			{ "b", 1 },
-			{ "kbps", 1000 },
-			{ "k", 1000 },
-			{ "K", 1000 },
-			{ "mbps", 1000 * 1000 },
-			{ "m", 1000 * 1000 },
-			{ "M", 1000 },
-		};
-
-		try
-		{
-			std::size_t end_pos;
-			float f = std::stof(s, &end_pos);
-			bps_ = f;
-
-			for (const auto &m : match)
-			{
-				auto found = s.find(m.first, end_pos);
-				if (found != end_pos || found + m.first.length() != s.length())
-					continue;
-				bps_ = f * m.second;
-				break;
-			}
-		}
-		catch (std::exception const &e)
-		{
-			throw std::runtime_error("Invalid bitrate string provided");
-		}
-	}
-
-	uint64_t bps() const
-	{
-		return bps_;
-	}
-
-	uint64_t kbps() const
-	{
-		return bps_ / 1000;
-	}
-
-	uint64_t mbps() const
-	{
-		return bps_ / (1000 * 1000);
-	}
-
-	explicit constexpr operator bool() const
-	{
-		return !!bps_;
-	}
-
-private:
-	uint64_t bps_;
-};
-
-struct VideoOptions : public Options
-{
-	VideoOptions() : Options()
+	VideoStillOptions() : Options()
 	{
 		using namespace boost::program_options;
+		// first we setup VideoOptions::VideoOptions()
+
 		// Generally we shall use zero or empty values to avoid over-writing the
 		// codec's default behaviour.
 		// clang-format off
@@ -159,10 +100,44 @@ struct VideoOptions : public Options
 			 "Add a time offset (in microseconds if no units provided) to the audio stream, relative to the video stream. "
 			 "The offset value can be either positive or negative.")
 #endif
-			;
 		// clang-format on
+
+		// next setup StillOptions::StillOptions()
+			("image-quality,iq", value<int>(&image_quality)->default_value(93),
+			 "Set the JPEG quality parameter")
+			("exif,x", value<std::vector<std::string>>(&exif),
+			 "Add these extra EXIF tags to the output file")
+			("timelapse", value<std::string>(&timelapse_)->default_value("0ms"),
+			 "Time interval between timelapse captures. If no units are provided default to ms.")
+			("framestart", value<uint32_t>(&framestart)->default_value(0),
+			 "Initial frame counter value for timelapse captures")
+			("datetime", value<bool>(&datetime)->default_value(false)->implicit_value(true),
+			 "Use date format for output file names")
+			("timestamp", value<bool>(&timestamp)->default_value(false)->implicit_value(true),
+			 "Use system timestamps for output file names")
+			("restart", value<unsigned int>(&restart)->default_value(0),
+			 "Set JPEG restart interval")
+			("keypress,k", value<bool>(&keypress)->default_value(false)->implicit_value(true),
+			 "Perform capture when ENTER pressed")
+			("signal,s", value<bool>(&signal)->default_value(false)->implicit_value(true),
+			 "Perform capture when signal received")
+			("thumb", value<std::string>(&thumb)->default_value("320:240:70"),
+			 "Set thumbnail parameters as width:height:quality, or none")
+			("encoding,e", value<std::string>(&encoding)->default_value("jpg"),
+			 "Set the desired output encoding, either jpg, png, rgb/rgb24, rgb48, bmp or yuv420")
+			("raw,r", value<bool>(&raw)->default_value(false)->implicit_value(true),
+			 "Also save raw file in DNG format")
+			("latest", value<std::string>(&latest),
+			 "Create a symbolic link with this name to most recent saved file")
+			("autofocus-on-capture", value<bool>(&af_on_capture)->default_value(false)->implicit_value(true),
+			 "Switch to AfModeAuto and trigger a scan just before capturing a still")
+			("zsl", value<bool>(&zsl)->default_value(false)->implicit_value(true),
+			 "Switch to AfModeAuto and trigger a scan just before capturing a still")
+		;
 	}
 
+
+	// VideoOptions attributes
 	Bitrate bitrate;
 	std::string profile;
 	std::string level;
@@ -192,8 +167,25 @@ struct VideoOptions : public Options
 	size_t circular;
 	uint32_t frames;
 
+	// StillOptions attributes
+	int image_quality;
+	std::vector<std::string> exif;
+	TimeVal<std::chrono::milliseconds> timelapse;
+	uint32_t framestart;
+	bool datetime;
+	bool timestamp;
+	unsigned int restart;
+	std::string thumb;
+	unsigned int thumb_width, thumb_height, thumb_quality;
+	std::string encoding;
+	bool raw;
+	std::string latest;
+	bool zsl;
+
 	virtual bool Parse(int argc, char *argv[]) override
 	{
+		// VideoOptions::Parse()
+
 		if (Options::Parse(argc, argv) == false)
 			return false;
 
@@ -235,11 +227,37 @@ struct VideoOptions : public Options
 			level = "4.2";
 		}
 
+
+		// StillOptions::Parse()
+
+		timelapse.set(timelapse_);
+
+		if ((keypress || signal) && timelapse)
+			throw std::runtime_error("keypress/signal and timelapse options are mutually exclusive");
+		if (strcasecmp(thumb.c_str(), "none") == 0)
+			thumb_quality = 0;
+		else if (sscanf(thumb.c_str(), "%u:%u:%u", &thumb_width, &thumb_height, &thumb_quality) != 3)
+			throw std::runtime_error("bad thumbnail parameters " + thumb);
+		if (strcasecmp(encoding.c_str(), "jpg") == 0)
+			encoding = "jpg";
+		else if (strcasecmp(encoding.c_str(), "yuv420") == 0)
+			encoding = "yuv420";
+		else if (strcasecmp(encoding.c_str(), "rgb") == 0 || strcasecmp(encoding.c_str(), "rgb24") == 0)
+			encoding = "rgb24";
+		else if (strcasecmp(encoding.c_str(), "rgb48") == 0)
+			encoding = "rgb48";
+		else if (strcasecmp(encoding.c_str(), "png") == 0)
+			encoding = "png";
+		else if (strcasecmp(encoding.c_str(), "bmp") == 0)
+			encoding = "bmp";
+		else
+			throw std::runtime_error("invalid encoding format " + encoding);
 		return true;
 	}
 	virtual void Print() const override
 	{
 		Options::Print();
+		// VideoOptions::Print()
 		std::cerr << "    bitrate: " << bitrate.kbps() << "kbps" << std::endl;
 		std::cerr << "    profile: " << profile << std::endl;
 		std::cerr << "    level:  " << level << std::endl;
@@ -254,6 +272,26 @@ struct VideoOptions : public Options
 		std::cerr << "    split: " << split << std::endl;
 		std::cerr << "    segment: " << segment << std::endl;
 		std::cerr << "    circular: " << circular << std::endl;
+
+		// StillOptions::Print()
+		std::cerr << "    encoding: " << encoding << std::endl;
+		std::cerr << "    image_quality: " << image_quality << std::endl;
+		std::cerr << "    raw: " << raw << std::endl;
+		std::cerr << "    restart: " << restart << std::endl;
+		std::cerr << "    timelapse: " << timelapse.get() << "ms" << std::endl;
+		std::cerr << "    framestart: " << framestart << std::endl;
+		std::cerr << "    datetime: " << datetime << std::endl;
+		std::cerr << "    timestamp: " << timestamp << std::endl;
+		std::cerr << "    keypress: " << keypress << std::endl;
+		std::cerr << "    signal: " << signal << std::endl;
+		std::cerr << "    thumbnail width: " << thumb_width << std::endl;
+		std::cerr << "    thumbnail height: " << thumb_height << std::endl;
+		std::cerr << "    thumbnail quality: " << thumb_quality << std::endl;
+		std::cerr << "    latest: " << latest << std::endl;
+		std::cerr << "    AF on capture: " << af_on_capture << std::endl;
+		std::cerr << "    Zero shutter lag: " << zsl << std::endl;
+		for (auto &s : exif)
+			std::cerr << "    EXIF: " << s << std::endl;
 	}
 
 private:
@@ -262,4 +300,5 @@ private:
 	std::string av_sync_;
 	std::string audio_bitrate_;
 #endif /* LIBAV_PRESENT */
+	std::string timelapse_;
 };

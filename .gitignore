@@ -319,3 +319,5 @@ $RECYCLE.BIN/
 
 # all build folders
 **/build/
+
+**/.vscode/
