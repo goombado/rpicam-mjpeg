@@ -159,9 +159,12 @@ int main(int argc, char *argv[])
 
 		if (mjpeg_options.Parse(argc, argv))
 		{
-			if (mjpeg_options.verbose >= 2)
-				mjpeg_options.Print();
 
+			if (mjpeg_options.verbose >= 2)
+				{
+					std::cout << "here" << std::endl;
+					mjpeg_options.Print();
+				}
 			event_loop(app);
 		}
 	}

@@ -66,17 +66,13 @@ struct MJPEGOptions : public VideoOptions
 
     virtual bool Parse(int argc, char *argv[]) override
     {
-
-        // Testing
-        // std::cout << "==================================================" << std::endl;
-
         if (output_preview.empty())
             {
                 output_preview = "/dev/shm/mjpeg/cam.jpg";
                 // Testing
-                std::cout << output_preview << std::endl;
+                // std::cout << output_preview << std::endl;
             }
-            
+              
         if (output_image.empty())
             {
                 std::time_t t = std::time(nullptr);
@@ -93,11 +89,11 @@ struct MJPEGOptions : public VideoOptions
                 }
 
                 std::strftime(image_buffer, image_buffer_size, sourceString.c_str(), now);
+                output_image = image_buffer;
+                free(image_buffer);
 
                 // Testing
-                std::cout << image_buffer << std::endl;
-
-                free(image_buffer);
+                // std::cout << output_image << std::endl;
             }
 
         if (output_video.empty())
@@ -116,16 +112,14 @@ struct MJPEGOptions : public VideoOptions
                 }
                 
                 std::strftime(video_buffer, video_buffer_size, sourceString.c_str(), now);
+                output_video = video_buffer;
+                free(video_buffer);
 
                 // Testing
-                std::cout << video_buffer << std::endl;
-
-                free(video_buffer);
+                // std::cout << video_buffer << std::endl;
             }
+        
         // raw_mode = Mode(raw_mode_string);
-
-
-        // std::cout << "==================================================" << std::endl;
 
         return true;
     }
@@ -133,6 +127,7 @@ struct MJPEGOptions : public VideoOptions
     virtual void Print() const override
     {
         VideoOptions::Print();
+        std::cout << "===============================================" << std::endl;
         std::cerr << "    output-mjpeg: " << output_image << std::endl;
         std::cerr << "    output-preview: " << output_preview << std::endl;
         std::cerr << "    output-video: " << output_video << std::endl;
