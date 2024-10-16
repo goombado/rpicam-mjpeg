@@ -43,7 +43,7 @@ struct MJPEGOptions : public VideoStillOptions
         ("video-output,vo",value<std::string>(&output_video),
             "Set the output path for the video stream. Can be udp/tcp for network stream")
         ("media-path", value<std::string>(&media_path)->default_value("/var/www/media/"),
-             "Set the base path for media files")
+            "Set the base path for media files")
         ("raw-mode,rm",value<std::string>(&raw_mode_string),
 			"Raw mode as W:H:bit-depth:packing, where packing is P (packed) or U (unpacked)")
         ("image-count,ic",value<unsigned int>(&image_count),
@@ -51,9 +51,9 @@ struct MJPEGOptions : public VideoStillOptions
         ("video-count,vc",value<unsigned int>(&video_count),
             "Set the video number for filename")
         ("image-width", value<unsigned int>(&image_width)->default_value(0),
-             "Set the width of the image file")
+            "Set the width of the image file")
         ("image-height", value<unsigned int>(&image_height)->default_value(0),
-             "Set the height of the image file")
+            "Set the height of the image file")
         ("image-mode", value<std::string>(&image_mode_string),
             "Camera mode for image as W:H:bit-depth:packing, where packing is P (packed) or U (unpacked)")
         ;
