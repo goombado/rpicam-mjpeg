@@ -255,20 +255,27 @@ Mode RPiCamApp::selectMode(const Mode &mode) const
 	return { best_mode.size.width, best_mode.size.height, best_mode.depth(), mode.packed };
 }
 
-Mode RPiCamApp::selectHighestMode(const Mode &mode) const
-{
-	SensorMode highest_mode;
-
-	for (const auto &sensor_mode : sensor_modes_)
+libcamera::PixelFormat RPiCamApp::mode_to_pixel_format(Mode const &mode)
 	{
-		if (sensor_mode.size.width > highest_mode.size.width) {
-			highest_mode.size = sensor_mode.size;
-			highest_mode.format = sensor_mode.format;
-		}
-	}
+		// The saving grace here is that we can ignore the Bayer order and return anything -
+		// our pipeline handler will give us back the order that works, whilst respecting the
+		// bit depth and packing. We may get a "stream adjusted" message, which we can ignore.
+		static std::vector<std::pair<Mode, libcamera::PixelFormat>> table = {
+			{ Mode(0, 0, 8, false), libcamera::formats::SBGGR8 },
+			{ Mode(0, 0, 8, true), libcamera::formats::SBGGR8 },
+			{ Mode(0, 0, 10, false), libcamera::formats::SBGGR10 },
+			{ Mode(0, 0, 10, true), libcamera::formats::SBGGR10_CSI2P },
+			{ Mode(0, 0, 12, false), libcamera::formats::SBGGR12 },
+			{ Mode(0, 0, 12, true), libcamera::formats::SBGGR12_CSI2P },
+		};
 
-	return { highest_mode.size.width, highest_mode.size.height, highest_mode.depth(), mode.packed };
-}
+		auto it = std::find_if(table.begin(), table.end(), [&mode] (auto &m) { return mode.bit_depth == m.first.bit_depth && mode.packed == m.first.packed; });
+		if (it != table.end())
+			return it->second;
+
+		return libcamera::formats::SBGGR12_CSI2P;
+	}
+	
 
 void RPiCamApp::ConfigureViewfinder()
 {

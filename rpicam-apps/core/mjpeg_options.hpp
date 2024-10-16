@@ -1,4 +1,8 @@
 // placeholder for MJPEG options
+#pragma once
+
+#ifndef MJPEG_OPTIONS_HPP
+#define MJPEG_OPTIONS_HPP
 
 #include <cstdio>
 #include <string>
@@ -58,3 +62,5 @@ struct MJPEGOptions : public VideoStillOptions {
     Mode image_mode;
     std::string image_mode_string;
 };
+
+#endif // MJPEG_OPTIONS_HPP

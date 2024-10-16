@@ -103,7 +103,7 @@ struct VideoStillOptions : public Options
 		// clang-format on
 
 		// next setup StillOptions::StillOptions()
-			("quality,q", value<int>(&image_quality)->default_value(93),
+			("image-quality,iq", value<int>(&image_quality)->default_value(93),
 			 "Set the JPEG quality parameter")
 			("exif,x", value<std::vector<std::string>>(&exif),
 			 "Add these extra EXIF tags to the output file")

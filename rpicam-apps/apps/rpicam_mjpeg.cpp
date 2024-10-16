@@ -22,10 +22,10 @@ static int signal_received;
 static void default_signal_handler(int signal_number)
 {
 	signal_received = signal_number;
-	LOG(1, "Received signal " << signal_number);
+	LOG(2, "Received signal " << signal_number);
 }
 
-static int get_key_or_signal(VideoOptions const *options, pollfd p[1])
+static int get_key_or_signal(MJPEGOptions const *options, pollfd p[1])
 {
 	int key = 0;
 	if (signal_received == SIGINT)
@@ -66,24 +66,46 @@ enum class OutputState
 	None3 = 7
 };
 
+static std::unique_ptr<Output> createVideoOutput(MJPEGOptions const *options, RPiCamMJPEGEncoder &app)
+{
+	std::unique_ptr<Output> video_output =  std::unique_ptr<Output>(Output::Create((VideoOptions*) options));
+	app.SetVideoEncodeOutputReadyCallback(std::bind(&Output::OutputReady, video_output.get(), _1, _2, _3, _4));
+	app.SetVideoMetadataReadyCallback(std::bind(&Output::MetadataReady, video_output.get(), _1));
+	return video_output;
+}
+
+static std::unique_ptr<Output> startVideoOutput(MJPEGOptions const *options, RPiCamMJPEGEncoder &app)
+{
+	std::unique_ptr<Output> video_output = createVideoOutput(options, app);
+	app.StartVideoEncoder();
+	return video_output;
+}
+
+static void stopVideoOutput(std::unique_ptr<Output> &video_output, RPiCamMJPEGEncoder &app)
+{
+	app.StopVideoEncoder();
+	video_output.reset();
+}
+
+
+
 static void event_loop(RPiCamMJPEGEncoder &app)
 {
 	MJPEGOptions const *options = app.GetOptions();
 	MJPEGOptions const *video_options = app.GetVideoOptions();
 	MJPEGOptions const *lores_options = app.GetLoresOptions();
-	MJPEGOptions const *image_options = app.GetImageOptions();
 
-	std::unique_ptr<Output> video_output = std::unique_ptr<Output>(Output::Create((VideoOptions*) video_options));
-	app.SetEncodeOutputReadyCallback(std::bind(&Output::OutputReady, video_output.get(), _1, _2, _3, _4));
-	app.SetMetadataReadyCallback(std::bind(&Output::MetadataReady, video_output.get(), _1));
+	std::unique_ptr<Output> video_output;
+	bool video_outputting = false;
 
 	std::unique_ptr<Output> lores_output = std::unique_ptr<Output>(Output::Create((VideoOptions*) lores_options));
-	app.SetEncodeOutputReadyCallback(std::bind(&Output::OutputReady, lores_output.get(), _1, _2, _3, _4));
-	app.SetMetadataReadyCallback(std::bind(&Output::MetadataReady, lores_output.get(), _1));
+	app.SetLoresEncodeOutputReadyCallback(std::bind(&Output::OutputReady, lores_output.get(), _1, _2, _3, _4));
+	app.SetLoresMetadataReadyCallback(std::bind(&Output::MetadataReady, lores_output.get(), _1));
 
 	app.OpenCamera();
 	app.ConfigureMJPEG();
 	app.StartLoresEncoder();
+	app.StartImageSaver();
 	app.StartCamera();
 	auto start_time = std::chrono::high_resolution_clock::now();
 	auto last_time = std::chrono::high_resolution_clock::now();
@@ -114,16 +136,19 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 		else if (msg.type != RPiCamMJPEGEncoder::MsgType::RequestComplete)
 			throw std::runtime_error("unrecognised message!");
 		
+		int key = get_key_or_signal(options, p);
+		if (key == '\n' && video_outputting)
+			video_output->Signal();
 
 		LOG(2, "Viewfinder frame " << count);
 		auto now = std::chrono::high_resolution_clock::now();
 		bool timeout = !options->frames && options->timeout &&
 					   ((now - start_time) > options->timeout.value);
 		bool frameout = options->frames && count >= options->frames;
-		if (timeout || frameout )
+		if (timeout || frameout || key == 'x' || key == 'X')
 		{
 			if (timeout)
-				LOG(1, "Halting: reached timeout of " << options->timeout.get<std::chrono::milliseconds>()
+				LOG(2, "Halting: reached timeout of " << options->timeout.get<std::chrono::milliseconds>()
 													  << " milliseconds.");
 			app.StopCamera(); // stop complains if encoder very slow to close
 			app.StopEncoders();
@@ -138,17 +163,71 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 		case OutputState::None0:
 			if (time_passed > std::chrono::milliseconds(15000))
 			{
+				std::cout << "Starting video output" << std::endl;
 				state = OutputState::Video0;
+				video_output = startVideoOutput(video_options, app);
 				last_time = now;
 			}
 			break;
 		case OutputState::Video0:
+			app.VideoEncodeBuffer(completed_request, app.VideoStream());
 			if (time_passed > std::chrono::milliseconds(15000))
 			{
-				app.StartVideoEncoder();
-				app.VideoEncodeBuffer(completed_request, app.VideoStream());
+				std::cout << "Stopping video output" << std::endl;
+				stopVideoOutput(video_output, app);
 				state = OutputState::None1;
 				last_time = now;
+			}
+			break;
+		case OutputState::None1:
+			if (time_passed > std::chrono::milliseconds(15000))
+			{
+				std::cout << "Began saving image at " << std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() << std::endl;
+				app.SaveImage(completed_request, app.RawStream());
+				state = OutputState::Image;
+				last_time = now;
+			}
+			break;
+		case OutputState::Image:
+			std::cout << "Reverting to only preview" << std::endl;
+			state = OutputState::None2;
+			last_time = now;
+			break;
+		case OutputState::None2:
+			if (time_passed > std::chrono::milliseconds(15000))
+			{
+				std::cout << "Starting video output" << std::endl;
+				state = OutputState::Video1PrePhoto;
+				video_output = startVideoOutput(video_options, app);
+				last_time = now;
+			}
+			break;
+		case OutputState::Video1PrePhoto:
+			app.VideoEncodeBuffer(completed_request, app.VideoStream());
+			if (time_passed > std::chrono::milliseconds(15000))
+			{
+				std::cout << "Saving image" << std::endl;
+				app.SaveImage(completed_request, app.RawStream());
+				state = OutputState::Video1PostPhoto;
+				last_time = now;
+			}
+			break;
+		case OutputState::Video1PostPhoto:
+			app.VideoEncodeBuffer(completed_request, app.VideoStream());
+			if (time_passed > std::chrono::milliseconds(15000))
+			{
+				std::cout << "Stopping video output" << std::endl;
+				stopVideoOutput(video_output, app);
+				state = OutputState::None3;
+				last_time = now;
+			}
+			break;
+		case OutputState::None3:
+			if (time_passed > std::chrono::milliseconds(15000))
+			{
+				std::cout << "Shutting down application" << std::endl;
+				app.StopCamera();
+				app.StopEncoders();
 			}
 			break;
 		}
@@ -167,6 +246,8 @@ int main(int argc, char *argv[])
 				options->Print();
 			
 			app.InitialiseCount();
+			app.InitialiseOptions();
+			LOG(2, "past initialise options");
 			event_loop(app);
 		}
 	}

@@ -29,10 +29,7 @@ public:
 	using Stream = libcamera::Stream;
 	using FrameBuffer = libcamera::FrameBuffer;
 
-	RPiCamMJPEGEncoder() : RPiCamApp(std::make_unique<MJPEGOptions>()) {
-
-	}
-
+	RPiCamMJPEGEncoder() : RPiCamApp(std::make_unique<MJPEGOptions>()) {}
 
 	void ConfigureMJPEG()
 	{
@@ -165,15 +162,15 @@ public:
 	void StartVideoEncoder()
 	{
 		createVideoEncoder();
-		video_encoder_->SetInputDoneCallback(std::bind(&RPiCamMJPEGEncoder::encodeBufferDone, this, std::placeholders::_1));
-		video_encoder_->SetOutputReadyCallback(encode_output_ready_callback_);
+		video_encoder_->SetInputDoneCallback(std::bind(&RPiCamMJPEGEncoder::videoEncodeBufferDone, this, std::placeholders::_1));
+		video_encoder_->SetOutputReadyCallback(video_encode_output_ready_callback_);
 	}
 
 	void StartLoresEncoder()
 	{
 		createLoresEncoder();
-		lores_encoder_->SetInputDoneCallback(std::bind(&RPiCamMJPEGEncoder::encodeBufferDone, this, std::placeholders::_1));
-		lores_encoder_->SetOutputReadyCallback(encode_output_ready_callback_);
+		lores_encoder_->SetInputDoneCallback(std::bind(&RPiCamMJPEGEncoder::loresEncodeBufferDone, this, std::placeholders::_1));
+		lores_encoder_->SetOutputReadyCallback(lores_encode_output_ready_callback_);
 	}
 
 	void StartImageSaver()
@@ -182,8 +179,10 @@ public:
 	}
 
 	// This is callback when the encoder gives you the encoded output data.
-	void SetEncodeOutputReadyCallback(EncodeOutputReadyCallback callback) { encode_output_ready_callback_ = callback; }
-	void SetMetadataReadyCallback(MetadataReadyCallback callback) { metadata_ready_callback_ = callback; };
+	void SetVideoEncodeOutputReadyCallback(EncodeOutputReadyCallback callback) { video_encode_output_ready_callback_ = callback; }
+	void SetLoresEncodeOutputReadyCallback(EncodeOutputReadyCallback callback) { lores_encode_output_ready_callback_ = callback; }
+	void SetVideoMetadataReadyCallback(MetadataReadyCallback callback) { video_metadata_ready_callback_ = callback; };
+	void SetLoresMetadataReadyCallback(MetadataReadyCallback callback) { lores_metadata_ready_callback_ = callback; };
 
 	void VideoEncodeBuffer(CompletedRequestPtr &completed_request, Stream *stream)
 	{
@@ -231,14 +230,23 @@ public:
 		const std::vector<libcamera::Span<uint8_t>> mem = r.Get();
 		if (!buffer || mem.empty())
 			throw std::runtime_error("no buffer to encode");
+
+		MJPEGOptions *image_options = (MJPEGOptions* ) GetImageOptions();
+
+		makeFilename(&(image_options->output), image_options->image_output);
+		
 		image_saver_->SaveImage(mem, completed_request, info);
-		encodeBufferDone(nullptr);
+		imageEncodeBufferDone(nullptr);
 	}
 
 	MJPEGOptions *GetOptions() const { return static_cast<MJPEGOptions *>(options_.get()); }
-	MJPEGOptions *GetVideoOptions() const { video_options_ ;}
-	MJPEGOptions *GetLoresOptions() const { lores_options_ ;}
-	MJPEGOptions *GetImageOptions() const { image_options_ ;}
+	MJPEGOptions *GetOptions() { return static_cast<MJPEGOptions *>(options_.get()); }
+	MJPEGOptions *GetVideoOptions() const { return static_cast<MJPEGOptions *>(video_options_.get()); ;}
+	MJPEGOptions *GetVideoOptions() { return static_cast<MJPEGOptions *>(video_options_.get()); ;}
+	MJPEGOptions *GetLoresOptions() const { return static_cast<MJPEGOptions *>(lores_options_.get()); ;}
+	MJPEGOptions *GetLoresOptions() { return static_cast<MJPEGOptions *>(lores_options_.get()); ;}
+	MJPEGOptions *GetImageOptions() const { return static_cast<MJPEGOptions *>(image_options_.get()); ;}
+	MJPEGOptions *GetImageOptions() { return static_cast<MJPEGOptions *>(image_options_.get()); ;}
 
 	void StopEncoders()
 	{
@@ -257,7 +265,26 @@ public:
 	void StopImageSaver() {
 		image_count += 1;
 		SaveCount();
+		image_saver_->stop();
 		image_saver_.reset();
+	}
+
+	void InitialiseOptions() {
+		MJPEGOptions *options = GetOptions();
+		video_options_ = std::make_unique<MJPEGOptions>(*GetOptions());
+		lores_options_ = std::make_unique<MJPEGOptions>(*GetOptions());
+		image_options_ = std::make_unique<MJPEGOptions>(*GetOptions());
+		LOG(2, "Initialising options...");
+
+		lores_options_->output = options->mjpeg_output;
+		lores_options_->codec = "mjpeg";
+		lores_options_->segment = 1;
+		lores_options_->width = options->lores_width;
+		lores_options_->height = options->lores_height;
+
+		image_options_->quality = options->image_quality;
+		image_options_->width = options->image_width;
+		image_options_->height = options->image_height;
 	}
 
 protected:
@@ -297,10 +324,7 @@ protected:
 		if (!info.width || !info.height || !info.stride)
 			throw std::runtime_error("raw image stream is not configured");
 		
-		MJPEGOptions *image_options(GetImageOptions());
-		makeFilename(&(image_options->output), image_options->image_output);
-		
-		image_saver_ = std::unique_ptr<ImageSaver>(new ImageSaver(image_options, CameraModel()));
+		image_saver_ = std::unique_ptr<ImageSaver>(new ImageSaver(GetImageOptions(), CameraModel()));
 	}
 	std::unique_ptr<ImageSaver> image_saver_;
 
@@ -308,26 +332,9 @@ protected:
 	std::unique_ptr<MJPEGOptions> lores_options_;
 	std::unique_ptr<MJPEGOptions> image_options_;
 
-	virtual void initialiseOptions() {
-		MJPEGOptions *options = GetOptions();
-
-		video_options_ = std::make_unique<MJPEGOptions>(options);
-		lores_options_ = std::make_unique<MJPEGOptions>(options);
-		image_options_ = std::make_unique<MJPEGOptions>(options);
-
-		lores_options_->output = options->mjpeg_output;
-		lores_options_->codec = "mjpeg";
-		lores_options_->segment = 1;
-		lores_options_->width = options->lores_width;
-		lores_options_->height = options->lores_height;
-
-		image_options_->quality = options->image_quality;
-		image_options_->width = options->image_width;
-		image_options_->height = options->image_height;
-	}
 
 private:
-	void encodeBufferDone(void *mem)
+	void videoEncodeBufferDone(void *mem)
 	{
 		// If non-NULL, mem would indicate which buffer has been completed, but
 		// currently we're just assuming everything is done in order. (We could
@@ -339,16 +346,49 @@ private:
 			if (encode_buffer_queue_.empty())
 				throw std::runtime_error("no buffer available to return");
 			CompletedRequestPtr &completed_request = encode_buffer_queue_.front();
-			if (metadata_ready_callback_ && !GetOptions()->metadata.empty())
-				metadata_ready_callback_(completed_request->metadata);
+			if (video_metadata_ready_callback_ && !GetOptions()->metadata.empty())
+				video_metadata_ready_callback_(completed_request->metadata);
+			encode_buffer_queue_.pop(); // drop shared_ptr reference
+		}
+	}
+	void loresEncodeBufferDone(void *mem)
+	{
+		// If non-NULL, mem would indicate which buffer has been completed, but
+		// currently we're just assuming everything is done in order. (We could
+		// handle this by replacing the queue with a vector of <mem, completed_request>
+		// pairs.)
+		assert(mem == nullptr);
+		{
+			std::lock_guard<std::mutex> lock(encode_buffer_queue_mutex_);
+			if (encode_buffer_queue_.empty())
+				throw std::runtime_error("no buffer available to return");
+			CompletedRequestPtr &completed_request = encode_buffer_queue_.front();
+			if (lores_metadata_ready_callback_ && !GetOptions()->metadata.empty())
+				lores_metadata_ready_callback_(completed_request->metadata);
+			encode_buffer_queue_.pop(); // drop shared_ptr reference
+		}
+	}
+	void imageEncodeBufferDone(void *mem)
+	{
+		// If non-NULL, mem would indicate which buffer has been completed, but
+		// currently we're just assuming everything is done in order. (We could
+		// handle this by replacing the queue with a vector of <mem, completed_request>
+		// pairs.)
+		assert(mem == nullptr);
+		{
+			std::lock_guard<std::mutex> lock(encode_buffer_queue_mutex_);
+			if (encode_buffer_queue_.empty())
+				throw std::runtime_error("no buffer available to return");
 			encode_buffer_queue_.pop(); // drop shared_ptr reference
 		}
 	}
 
 	std::queue<CompletedRequestPtr> encode_buffer_queue_;
 	std::mutex encode_buffer_queue_mutex_;
-	EncodeOutputReadyCallback encode_output_ready_callback_;
-	MetadataReadyCallback metadata_ready_callback_;
+	EncodeOutputReadyCallback video_encode_output_ready_callback_;
+	EncodeOutputReadyCallback lores_encode_output_ready_callback_;
+	MetadataReadyCallback video_metadata_ready_callback_;
+	MetadataReadyCallback lores_metadata_ready_callback_;
 
 	struct timespec currTime;
 	struct tm *localTime;
@@ -364,12 +404,10 @@ private:
 		char p[512];
 		char *s, *f, *q;
 		int sp, si=0;
-		int read_size;
-		FILE *fp;
 
 		memset(p, 0, sizeof p);
 		//get copy of name_template to work with
-		asprintf(&name_template1, "%s", name_template);
+		asprintf(&name_template1, "%s", name_template.c_str());
 		s = name_template1;
 		if(s != NULL) {
 			//start and end pointers
@@ -414,7 +452,7 @@ private:
 		char *name_template1;
 		//allow paths to be relative to media path
 		if (name_template[0] != '/') {
-			asprintf(&name_template1,"%s/%s", GetOptions()->media_path, name_template);
+			asprintf(&name_template1,"%s/%s", GetOptions()->media_path.c_str(), name_template.c_str());
 			makeName(filename, name_template1);
 			free(name_template1);
 		} else {
