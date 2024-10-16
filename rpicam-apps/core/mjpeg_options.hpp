@@ -1,15 +1,19 @@
 #pragma once
 
+#ifndef MJPEG_OPTIONS_HPP
+#define MJPEG_OPTIONS_HPP
+
 #include <cstdio>
 
 #include <string>
 #include <ctime>
 
-#include "video_options.hpp"
+#include "video_still_options.hpp"
+#include "core/options.hpp"
 
-struct MJPEGOptions : public VideoOptions
+struct MJPEGOptions : public VideoStillOptions
 {
-    MJPEGOptions() : VideoOptions()
+    MJPEGOptions() : VideoStillOptions()
     {
         using namespace boost::program_options;
 
@@ -20,7 +24,7 @@ struct MJPEGOptions : public VideoOptions
 
         Documentation regarding porting of previous features from RaspiCAM: https://docs.google.com/document/d/19grw-U_GrXwHwHhGO39kM3aB3IjCONBWZC7nOWAJiBI/edit?usp=sharing
 
-        Deprecater Features:
+        Deprecated Features:
         - opacity (--opacity)
         - image effects (--imxfx)
         - colour effects (--colfx)
@@ -32,18 +36,26 @@ struct MJPEGOptions : public VideoOptions
         - iso (--ISO)
         */
         options_.add_options()
-        ("output-image,om",value<std::string>(&output_image),
+        ("image-output,io",value<std::string>(&output_image),
             "Set the output path for the MJPEG stream. Can be udp/tcp for network stream")
-        ("output-preview,op",value<std::string>(&output_preview),
+        ("mjpeg-output,mo",value<std::string>(&output_preview),
             "Set the output path for the low resolution preview stream. Can be udp/tcp for network stream")
-        ("output-video,ov",value<std::string>(&output_video),
+        ("video-output,vo",value<std::string>(&output_video),
             "Set the output path for the video stream. Can be udp/tcp for network stream")
+        ("media-path", value<std::string>(&media_path)->default_value("/var/www/media/"),
+             "Set the base path for media files")
         ("raw-mode,rm",value<std::string>(&raw_mode_string),
 			"Raw mode as W:H:bit-depth:packing, where packing is P (packed) or U (unpacked)")
         ("image-count,ic",value<unsigned int>(&image_count),
             "Set the image number for filename")
         ("video-count,vc",value<unsigned int>(&video_count),
             "Set the video number for filename")
+        ("image-width", value<unsigned int>(&image_width)->default_value(0),
+             "Set the width of the image file")
+        ("image-height", value<unsigned int>(&image_height)->default_value(0),
+             "Set the height of the image file")
+        ("image-mode", value<std::string>(&image_mode_string),
+            "Camera mode for image as W:H:bit-depth:packing, where packing is P (packed) or U (unpacked)")
         ;
     }
 
@@ -53,6 +65,11 @@ struct MJPEGOptions : public VideoOptions
     std::string raw_mode_string;
     unsigned int image_count = 0;
     unsigned int video_count = 0;
+    std::string media_path;
+    unsigned int image_width;
+    unsigned int image_height;
+    Mode image_mode;
+    std::string image_mode_string;
 
 
     /*
@@ -66,6 +83,11 @@ struct MJPEGOptions : public VideoOptions
 
     virtual bool Parse(int argc, char *argv[]) override
     {
+        if (!VideoStillOptions::Parse(argc, argv))
+            return false;
+
+        image_mode = Mode(image_mode_string);
+
         if (output_preview.empty())
             {
                 output_preview = "/dev/shm/mjpeg/cam.jpg";
@@ -124,12 +146,18 @@ struct MJPEGOptions : public VideoOptions
         return true;
     }
 
-    virtual void Print() const override
+    void Print() const override
     {
-        VideoOptions::Print();
+        VideoStillOptions::Print();
         std::cout << "===============================================" << std::endl;
-        std::cerr << "    output-mjpeg: " << output_image << std::endl;
-        std::cerr << "    output-preview: " << output_preview << std::endl;
-        std::cerr << "    output-video: " << output_video << std::endl;
+        std::cout << "Image output: " << output_image << std::endl;
+        std::cout << "Video output: " << output_video << std::endl;
+        std::cout << "MJPEG output: " << output_preview << std::endl;
+        std::cout << "Media path: " << media_path << std::endl;
+        std::cout << "Image width: " << image_width << std::endl;
+        std::cout << "Image height: " << image_height << std::endl;
+        std::cout << "Image mode: " << image_mode_string << std::endl;
     }
 };
+
+#endif // MJPEG_OPTIONS_HPP

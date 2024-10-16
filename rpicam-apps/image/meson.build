@@ -8,6 +8,7 @@ rpicam_app_src += files([
 
 image_headers = files([
     'image.hpp',
+    'dng.hpp'
 ])
 
 exif_dep = dependency('libexif', required : true)

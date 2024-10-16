@@ -10,6 +10,7 @@
 #include "core/frame_info.hpp"
 #include "core/rpicam_app.hpp"
 #include "core/options.hpp"
+#include "core/mjpeg_options.hpp"
 
 #include <cmath>
 #include <fcntl.h>
@@ -26,27 +27,6 @@
 
 unsigned int RPiCamApp::verbosity = 1;
 
-static libcamera::PixelFormat mode_to_pixel_format(Mode const &mode)
-{
-	// The saving grace here is that we can ignore the Bayer order and return anything -
-	// our pipeline handler will give us back the order that works, whilst respecting the
-	// bit depth and packing. We may get a "stream adjusted" message, which we can ignore.
-
-	static std::vector<std::pair<Mode, libcamera::PixelFormat>> table = {
-		{ Mode(0, 0, 8, false), libcamera::formats::SBGGR8 },
-		{ Mode(0, 0, 8, true), libcamera::formats::SBGGR8 },
-		{ Mode(0, 0, 10, false), libcamera::formats::SBGGR10 },
-		{ Mode(0, 0, 10, true), libcamera::formats::SBGGR10_CSI2P },
-		{ Mode(0, 0, 12, false), libcamera::formats::SBGGR12 },
-		{ Mode(0, 0, 12, true), libcamera::formats::SBGGR12_CSI2P },
-	};
-
-	auto it = std::find_if(table.begin(), table.end(), [&mode] (auto &m) { return mode.bit_depth == m.first.bit_depth && mode.packed == m.first.packed; });
-	if (it != table.end())
-		return it->second;
-
-	return libcamera::formats::SBGGR12_CSI2P;
-}
 
 static void set_pipeline_configuration(Platform platform)
 {
@@ -274,6 +254,28 @@ Mode RPiCamApp::selectMode(const Mode &mode) const
 
 	return { best_mode.size.width, best_mode.size.height, best_mode.depth(), mode.packed };
 }
+
+libcamera::PixelFormat RPiCamApp::mode_to_pixel_format(Mode const &mode)
+	{
+		// The saving grace here is that we can ignore the Bayer order and return anything -
+		// our pipeline handler will give us back the order that works, whilst respecting the
+		// bit depth and packing. We may get a "stream adjusted" message, which we can ignore.
+		static std::vector<std::pair<Mode, libcamera::PixelFormat>> table = {
+			{ Mode(0, 0, 8, false), libcamera::formats::SBGGR8 },
+			{ Mode(0, 0, 8, true), libcamera::formats::SBGGR8 },
+			{ Mode(0, 0, 10, false), libcamera::formats::SBGGR10 },
+			{ Mode(0, 0, 10, true), libcamera::formats::SBGGR10_CSI2P },
+			{ Mode(0, 0, 12, false), libcamera::formats::SBGGR12 },
+			{ Mode(0, 0, 12, true), libcamera::formats::SBGGR12_CSI2P },
+		};
+
+		auto it = std::find_if(table.begin(), table.end(), [&mode] (auto &m) { return mode.bit_depth == m.first.bit_depth && mode.packed == m.first.packed; });
+		if (it != table.end())
+			return it->second;
+
+		return libcamera::formats::SBGGR12_CSI2P;
+	}
+	
 
 void RPiCamApp::ConfigureViewfinder()
 {
@@ -603,71 +605,7 @@ void RPiCamApp::ConfigureVideo(unsigned int flags)
 	LOG(2, "Video setup complete");
 }
 
-void RPiCamApp::ConfigureRaspiMJPEG()
-{
-	LOG(2, "Configuring RaspiMJPEG streams...");
 
-	// first we setup MJPEG, full quality and preview streams respectively
-	StreamRoles stream_roles = { StreamRole::VideoRecording, StreamRole::VideoRecording };
-	// int lores_index = 2;
-	configuration_ = camera_->generateConfiguration(stream_roles);
-	if (!configuration_)
-		throw std::runtime_error("failed to generate video configuration");
-
-	// Now we get to override any of the default settings from the options_->
-	StreamConfiguration &cfg = configuration_->at(0);
-	StreamConfiguration &cfgv = configuration_->at(1);
-	cfg.pixelFormat = libcamera::formats::YUV420;
-	cfgv.pixelFormat = libcamera::formats::YUV420;
-	cfg.bufferCount = 6; // 6 buffers is better than 4
-	cfgv.bufferCount = 6;
-	if (options_->buffer_count > 0) {
-		cfg.bufferCount = options_->buffer_count;
-		cfgv.bufferCount = options_->buffer_count;
-	}
-	if (options_->width) {
-		cfg.size.width = options_->width;
-		cfgv.size.width = options_->width;
-	}
-	if (options_->height) {
-		cfg.size.height = options_->height;
-		cfgv.size.height = options_->height;
-	}
-	cfg.colorSpace = libcamera::ColorSpace::Sycc;
-	if (cfgv.size.width >= 1280 || cfgv.size.height >= 720) {
-		cfgv.colorSpace = libcamera::ColorSpace::Rec709;
-	}
-	else {
-		cfgv.colorSpace = libcamera::ColorSpace::Smpte170m;
-	}
-
-	configuration_->orientation = libcamera::Orientation::Rotate0 * options_->transform;
-
-	// post_processor_.AdjustConfig("video", &configuration_->at(0));
-
-	// Size lores_size(options_->lores_width, options_->lores_height);
-	// lores_size.alignDownTo(2, 2);
-	// if (lores_size.width > configuration_->at(0).size.width ||
-	// 	lores_size.height > configuration_->at(0).size.height) {
-	// 	throw std::runtime_error("Low res image larger than video");
-	// }
-	// configuration_->at(lores_index).pixelFormat = lores_format_;
-	// configuration_->at(lores_index).size = lores_size;
-	// configuration_->at(lores_index).bufferCount = configuration_->at(0).bufferCount;
-
-	configuration_->orientation = libcamera::Orientation::Rotate0 * options_->transform;
-
-	configureDenoise(options_->denoise == "auto" ? "cdn_fast" : options_->denoise);
-	setupCapture();
-
-	streams_["mjpeg"] = configuration_->at(0).stream();
-	streams_["video"] = configuration_->at(1).stream();
-	// streams_["preview"] = configuration_->at(lores_index).stream();
-
-	// post_processor_.Configure();
-
-	LOG(2, "Video setup complete");
-}
 
 void RPiCamApp::Teardown()
 {
@@ -969,16 +907,6 @@ libcamera::Stream *RPiCamApp::RawStream(StreamInfo *info) const
 libcamera::Stream *RPiCamApp::VideoStream(StreamInfo *info) const
 {
 	return GetStream("video", info);
-}
-
-libcamera::Stream *RPiCamApp::MJPEGStream(StreamInfo *info) const
-{
-	return GetStream("mjpeg", info);
-}
-
-libcamera::Stream *RPiCamApp::PreviewStream(StreamInfo *info) const
-{
-	return GetStream("preview", info);
 }
 
 libcamera::Stream *RPiCamApp::LoresStream(StreamInfo *info) const
