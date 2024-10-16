@@ -161,7 +161,7 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 		switch (state)
 		{
 		case OutputState::None0:
-			if (time_passed > std::chrono::milliseconds(15000))
+			if (time_passed > std::chrono::milliseconds(10000))
 			{
 				std::cout << "Starting video output" << std::endl;
 				state = OutputState::Video0;
@@ -171,7 +171,7 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 			break;
 		case OutputState::Video0:
 			app.VideoEncodeBuffer(completed_request, app.VideoStream());
-			if (time_passed > std::chrono::milliseconds(15000))
+			if (time_passed > std::chrono::milliseconds(10000))
 			{
 				std::cout << "Stopping video output" << std::endl;
 				stopVideoOutput(video_output, app);
@@ -180,7 +180,7 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 			}
 			break;
 		case OutputState::None1:
-			if (time_passed > std::chrono::milliseconds(15000))
+			if (time_passed > std::chrono::milliseconds(10000))
 			{
 				std::cout << "Began saving image at " << std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() << std::endl;
 				app.SaveImage(completed_request, app.RawStream());
@@ -194,7 +194,7 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 			last_time = now;
 			break;
 		case OutputState::None2:
-			if (time_passed > std::chrono::milliseconds(15000))
+			if (time_passed > std::chrono::milliseconds(10000))
 			{
 				std::cout << "Starting video output" << std::endl;
 				state = OutputState::Video1PrePhoto;
@@ -204,7 +204,7 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 			break;
 		case OutputState::Video1PrePhoto:
 			app.VideoEncodeBuffer(completed_request, app.VideoStream());
-			if (time_passed > std::chrono::milliseconds(15000))
+			if (time_passed > std::chrono::milliseconds(10000))
 			{
 				std::cout << "Saving image" << std::endl;
 				app.SaveImage(completed_request, app.RawStream());
@@ -214,7 +214,7 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 			break;
 		case OutputState::Video1PostPhoto:
 			app.VideoEncodeBuffer(completed_request, app.VideoStream());
-			if (time_passed > std::chrono::milliseconds(15000))
+			if (time_passed > std::chrono::milliseconds(10000))
 			{
 				std::cout << "Stopping video output" << std::endl;
 				stopVideoOutput(video_output, app);
@@ -223,11 +223,12 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 			}
 			break;
 		case OutputState::None3:
-			if (time_passed > std::chrono::milliseconds(15000))
+			if (time_passed > std::chrono::milliseconds(10000))
 			{
 				std::cout << "Shutting down application" << std::endl;
 				app.StopCamera();
 				app.StopEncoders();
+				return;
 			}
 			break;
 		}

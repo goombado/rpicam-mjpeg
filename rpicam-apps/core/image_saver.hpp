@@ -132,7 +132,7 @@ class ImageSaver {
 
         static void dng_convert(const MJPEGOptions* options, std::string const &filename, StreamInfo const &info)
         {
-            std::string dcraw_cmd = "dcraw -c -o 0 -q 0 ";
+            std::string dcraw_cmd = "dcraw -c -o 0 -q 0 -a -b 1.5 ";
             std::string dng_filename = filename + ".dng";
             std::string bayer_name = get_bayer_format_name(info);
             if (bayer_name.find("16") != std::string::npos)
@@ -153,9 +153,10 @@ class ImageSaver {
             else
                 ppm_cmd = "ppmtoyuv " + ppm_cmd;
             
+            LOG(2, "Running command: " + dcraw_cmd + ppm_cmd);
             run_command(dcraw_cmd + ppm_cmd);
             run_command("rm -f " + dng_filename);
-            std::cout << "Finished saving image at " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count() << std::endl;
+            LOG(2, "Finished saving image at " + std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count());
         }
         
         MJPEGOptions *options_;

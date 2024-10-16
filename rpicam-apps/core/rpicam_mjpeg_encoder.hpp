@@ -234,9 +234,9 @@ public:
 		MJPEGOptions *image_options = (MJPEGOptions* ) GetImageOptions();
 
 		makeFilename(&(image_options->output), image_options->image_output);
-		
 		image_saver_->SaveImage(mem, completed_request, info);
-		imageEncodeBufferDone(nullptr);
+
+		image_count++;
 	}
 
 	MJPEGOptions *GetOptions() const { return static_cast<MJPEGOptions *>(options_.get()); }
@@ -255,7 +255,7 @@ public:
 		StopImageSaver();
 	}
 	void StopVideoEncoder() { 
-		video_count += 1;
+		video_count++;
 		SaveCount();
 		video_encoder_.reset(); 
 	}
@@ -263,7 +263,6 @@ public:
 		lores_encoder_.reset(); 
 	}
 	void StopImageSaver() {
-		image_count += 1;
 		SaveCount();
 		image_saver_->stop();
 		image_saver_.reset();
@@ -365,20 +364,6 @@ private:
 			CompletedRequestPtr &completed_request = encode_buffer_queue_.front();
 			if (lores_metadata_ready_callback_ && !GetOptions()->metadata.empty())
 				lores_metadata_ready_callback_(completed_request->metadata);
-			encode_buffer_queue_.pop(); // drop shared_ptr reference
-		}
-	}
-	void imageEncodeBufferDone(void *mem)
-	{
-		// If non-NULL, mem would indicate which buffer has been completed, but
-		// currently we're just assuming everything is done in order. (We could
-		// handle this by replacing the queue with a vector of <mem, completed_request>
-		// pairs.)
-		assert(mem == nullptr);
-		{
-			std::lock_guard<std::mutex> lock(encode_buffer_queue_mutex_);
-			if (encode_buffer_queue_.empty())
-				throw std::runtime_error("no buffer available to return");
 			encode_buffer_queue_.pop(); // drop shared_ptr reference
 		}
 	}
