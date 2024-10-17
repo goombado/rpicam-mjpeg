@@ -12,6 +12,7 @@
 
 #include <dirent.h>
 #include <time.h>
+#include <ctime>
 
 #include "core/rpicam_app.hpp"
 #include "core/stream_info.hpp"
@@ -19,6 +20,10 @@
 #include "core/image_saver.hpp"
 
 #include "encoder/encoder.hpp"
+
+#define MAX_UNSIGNED_INT_LENGTH 10 // 4,294,967,295
+#define NULL_TERMINATOR_LENGTH 1
+#define FILE_PLACEHOLDER_LENGTH 2 // %v or %i
 
 typedef std::function<void(void *, size_t, int64_t, bool)> EncodeOutputReadyCallback;
 typedef std::function<void(libcamera::ControlList &)> MetadataReadyCallback;
@@ -112,6 +117,11 @@ public:
 
 	}
 
+	/*
+	InitialiseCount checks for the existence of a count.txt file in the media_path/.rpicam-mjpeg folder
+	If the file exists, it reads the video_count and image_count from the file
+	If the file does not exist, it creates the file and writes the video_count and image_count to the file as 0.
+	*/ 
 	void InitialiseCount()
 	{
 		createMediaPath();
@@ -127,8 +137,7 @@ public:
 		if (std::filesystem::exists(item_count_file))
 		{
 			std::ifstream file(item_count_file);
-			file >> video_count;
-			file >> image_count;
+			file >> video_count >> image_count;
 			file.close();
 		}
 		else
@@ -141,6 +150,9 @@ public:
 		}
 	}
 
+	/*
+	SaveCount writes the video_count and image_count to the count.txt file in the media_path/.rpicam-mjpeg folder
+	*/
 	void SaveCount()
 	{
 		std::filesystem::path media_path = GetOptions()->media_path;
@@ -381,67 +393,62 @@ private:
 	int video_count = 0;
 	int image_count = 0;
 
-	void makeName(std::string *name, std::string name_template) {
-		//Create name from name_template
-		const int max_subs = 24;
-		char spec[12] = "%YyMDhmsuvi";
-		char *name_template1;
-		char p[512];
-		char *s, *f, *q;
-		int sp, si=0;
 
-		memset(p, 0, sizeof p);
-		//get copy of name_template to work with
-		asprintf(&name_template1, "%s", name_template.c_str());
-		s = name_template1;
-		if(s != NULL) {
-			//start and end pointers
-			//successively search through name_template for % specifiers
-			while(*s && si < max_subs && strlen(p) < 255) {
-				if (*s == '%') {
-					s++;
-					//find which specifier it is or default to unknown
-					f = strchr(spec, *s);
-					if (f == NULL) {
-						sp = strlen(spec);
-					} else {
-						sp = f-spec;
-					}
-					q = p + strlen(p);
-					switch(sp) {
-						case 0: sprintf(q, "%s", "%");break;
-						case 1: sprintf(q, "%04d", localTime->tm_year+1900);break;
-						case 2: sprintf(q, "%02d", (localTime->tm_year+1900) % 100);break;
-						case 3: sprintf(q, "%02d", localTime->tm_mon+1);break;
-						case 4: sprintf(q, "%02d", localTime->tm_mday);break;
-						case 5: sprintf(q, "%02d", localTime->tm_hour);break;
-						case 6: sprintf(q, "%02d", localTime->tm_min);break;
-						case 7: sprintf(q, "%02d", localTime->tm_sec);break;
-						case 8: sprintf(q, "%03ld", currTime.tv_nsec / 1000000);break;
-						case 9: sprintf(q, "%04d", video_count);break;
-						case 10: sprintf(q, "%04d", image_count);break;
-					}
-					si++;
-					s++;
-				} else {
-					p[strlen(p)] = *s;
-					s++;
-				}
+	// Attempt at reworking andrei's makeName function
+	void makeName(std::string *name, std::string name_template) {
+		
+		size_t buffer_size = name_template.size() + MAX_UNSIGNED_INT_LENGTH + NULL_TERMINATOR_LENGTH;
+		char* buffer = (char*)malloc(buffer_size);
+		char* buffer_2 = (char*)malloc(buffer_size);
+
+		std::time_t t = std::time(nullptr);
+		std::tm* now = std::localtime(&t);
+
+		const char *p = name_template.c_str();
+		char *buf_p = buffer;
+
+		while (*p)
+		{
+			if (*p == '%' && *(p + 1) == 'v') 
+			{  // Custom specifier %v for video count
+				strcpy (buf_p, std::to_string(video_count).c_str());
+				buf_p += std::to_string(video_count).length();
+				p += 2;  // Skip over %v
+			}
+			else if (*p == '%' && *(p + 1) == 'i') 
+			{  // Custom specifier %i for image count
+				strcpy (buf_p, std::to_string(image_count).c_str());
+				buf_p += std::to_string(image_count).length();
+				p += 2;  // Skip over %i
+			}
+			else
+			{
+				*buf_p++ = *p++;  // Copy regular characters
 			}
 		}
-		*name = p;
-		free(name_template1);
+		*buf_p = '\0';  // Null-terminate the string
+
+		std::strftime(buffer_2, buffer_size, buffer, now);
+		*name = buffer_2;
+
+		free(buffer);
+		free(buffer_2);
+
+		std::cout << "file name: " << *name << std::endl;
 	}
 
+
+	// makeFilename checks for the status of the provided path/filename and makes calls to makeName.
 	void makeFilename(std::string* filename, std::string name_template) {
 		char *name_template1;
-		//allow paths to be relative to media path
+		// if name_template is not an absolute path, prepend the media_path
 		if (name_template[0] != '/') {
 			asprintf(&name_template1,"%s/%s", GetOptions()->media_path.c_str(), name_template.c_str());
 			makeName(filename, name_template1);
-			free(name_template1);
+			// free(name_template1);
 		} else {
 			makeName(filename, name_template);
+			// free(name_template1);
 		}
 	}
 

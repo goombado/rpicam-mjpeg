@@ -11,6 +11,7 @@
 #include "video_still_options.hpp"
 #include "core/options.hpp"
 
+
 struct MJPEGOptions : public VideoStillOptions
 {
     MJPEGOptions() : VideoStillOptions()
@@ -36,11 +37,11 @@ struct MJPEGOptions : public VideoStillOptions
         - iso (--ISO)
         */
         options_.add_options()
-        ("image-output,io",value<std::string>(&output_image),
+        ("image-output,io",value<std::string>(&output_image)->default_value("/var/www/media/im_%i_%Y%m%d_%H%M%S.jpg"),
             "Set the output path for the MJPEG stream. Can be udp/tcp for network stream")
-        ("mjpeg-output,mo",value<std::string>(&output_preview),
+        ("mjpeg-output,mo",value<std::string>(&output_preview)->default_value("/dev/shm/mjpeg/cam.jpg"),
             "Set the output path for the low resolution preview stream. Can be udp/tcp for network stream")
-        ("video-output,vo",value<std::string>(&output_video),
+        ("video-output,vo",value<std::string>(&output_video)->default_value("/var/www/media/vi_%v_%Y%m%d_%H%M%S.mp4"),
             "Set the output path for the video stream. Can be udp/tcp for network stream")
         ("media-path", value<std::string>(&media_path)->default_value("/var/www/media/"),
             "Set the base path for media files")
@@ -78,7 +79,6 @@ struct MJPEGOptions : public VideoStillOptions
     preview_path /dev/shm/mjpeg/cam.jpg
     image_path /var/www/media/im_%i_%Y%M%D_%h%m%s.jpg
     video_path /var/www/media/vi_%v_%Y%M%D_%h%m%s.mp4
-
      */
 
     virtual bool Parse(int argc, char *argv[]) override
@@ -88,59 +88,88 @@ struct MJPEGOptions : public VideoStillOptions
 
         image_mode = Mode(image_mode_string);
 
-        if (output_preview.empty())
-            {
-                output_preview = "/dev/shm/mjpeg/cam.jpg";
-                // Testing
-                // std::cout << output_preview << std::endl;
-            }
+        // COMMENTED OUT FOR NOW
+        // if (output_preview.empty())
+        //     {
+        //         output_preview = "/dev/shm/mjpeg/cam.jpg";
+        //         // Testing
+        //         // std::cout << output_preview << std::endl;
+        //     }
               
-        if (output_image.empty())
-            {
-                std::time_t t = std::time(nullptr);
-                std::tm* now = std::localtime(&t);
-
-                std::string sourceString = "/var/www/media/im_" + std::to_string(image_count) + "_%Y%m%d_%H%M%S.jpg";
-                std::string bufferString = "/var/www/media/im__YYYYMMDD_HHMMSS.jpg";
-                size_t image_buffer_size = bufferString.size()+std::to_string(image_count).length()+1;
-
-                char* image_buffer = (char*)malloc(image_buffer_size);
-                if (image_buffer == nullptr) {
-                    std::cerr << "Memory allocation failed!" << std::endl;
-                    return 1;
-                }
-
-                std::strftime(image_buffer, image_buffer_size, sourceString.c_str(), now);
-                output_image = image_buffer;
-                free(image_buffer);
-
-                // Testing
-                // std::cout << output_image << std::endl;
-            }
-
-        if (output_video.empty())
-            {
-                std::time_t t = std::time(nullptr);
-                std::tm* now = std::localtime(&t);
-
-                std::string sourceString = "/var/www/media/vi_" + std::to_string(video_count) + "_%Y%m%d_%H%M%S.mp4";
-                std::string bufferString = "/var/www/media/vi__YYYYMMDD_HHMMSS.jpg";
-                size_t video_buffer_size = bufferString.size()+std::to_string(video_count).length()+1;
+        // if (output_image.empty())
+        //     {
+        //         // This now needs to be changed to just set the template?
+        //         /*
                 
-                char* video_buffer = (char*)malloc(video_buffer_size);
-                if (video_buffer == nullptr) {
-                    std::cerr << "Memory allocation failed!" << std::endl;
-                    return 1;
-                }
-                
-                std::strftime(video_buffer, video_buffer_size, sourceString.c_str(), now);
-                output_video = video_buffer;
-                free(video_buffer);
+        //         wait okay so i dont really get what andrei wants, like should the timestamp occur at the start
+        //         or the end of the video capture? isn't the other stream being piped to postprocessing anyways?
 
-                // Testing
-                // std::cout << video_buffer << std::endl;
-            }
-        
+        //         image_output needs to dynamically grab a timestamp from the start --> need a name to save under.
+                
+        //         */
+                
+        //         output_image = "/var/www/media/im_%i_%Y%m%d_%H%M%S.jpg";
+
+
+        //         // std::string buffer_string = "/var/www/media/im__YYYYMMDD_HHMMSS.jpg";
+        //         // size_t image_buffer_size = buffer_string.size() + MAX_UNSIGNED_INT_LENGTH + NULL_TERMINATOR_LENGTH;
+
+        //         // char* image_buffer = (char*)malloc(image_buffer_size);
+        //         // if (image_buffer == nullptr) {
+        //         //     std::cerr << "Memory allocation failed!" << std::endl;
+        //         //     return 1;
+        //         // }
+            
+        //         // output_image = image_buffer;
+        //         // free(image_buffer);
+
+        //         //====================================================
+                
+            //     std::time_t t = std::time(nullptr);
+            //     std::tm* now = std::localtime(&t);
+
+            //     std::string source_string = "/var/www/media/im_" + std::to_string(image_count) + "_%Y%m%d_%H%M%S.jpg";
+            //     std::string buffer_string = "/var/www/media/im__YYYYMMDD_HHMMSS.jpg";
+            //     size_t image_buffer_size = buffer_string.size()+std::to_string(image_count).length()+1;
+
+            //     char* image_buffer = (char*)malloc(image_buffer_size);
+            //     if (image_buffer == nullptr) {
+            //         std::cerr << "Memory allocation failed!" << std::endl;
+            //         return 1;
+            //     }
+
+            //     std::strftime(image_buffer, image_buffer_size, source_string.c_str(), now);
+            //     output_image = image_buffer;
+            //     free(image_buffer);
+
+            //     // Testing
+            //     // std::cout << output_image << std::endl;
+            // }
+
+        // if (output_video.empty())
+        //     {
+        //         output_video = "/var/www/media/vi_%v_%Y%m%d_%H%M%S.mp4";
+        //         // std::time_t t = std::time(nullptr);
+        //         // std::tm* now = std::localtime(&t);
+
+        //         // std::string source_string = "/var/www/media/vi_" + std::to_string(video_count) + "_%Y%m%d_%H%M%S.mp4";
+        //         // std::string buffer_string = "/var/www/media/vi__YYYYMMDD_HHMMSS.jpg";
+        //         // size_t video_buffer_size = buffer_string.size()+std::to_string(video_count).length()+1;
+                
+        //         // char* video_buffer = (char*)malloc(video_buffer_size);
+        //         // if (video_buffer == nullptr) {
+        //         //     std::cerr << "Memory allocation failed!" << std::endl;
+        //         //     return 1;
+        //         // }
+                
+        //         // std::strftime(video_buffer, video_buffer_size, source_string.c_str(), now);
+        //         // output_video = video_buffer;
+        //         // free(video_buffer);
+
+        //         // Testing
+        //         // std::cout << video_buffer << std::endl;
+        //     }
+
         // raw_mode = Mode(raw_mode_string);
 
         return true;
