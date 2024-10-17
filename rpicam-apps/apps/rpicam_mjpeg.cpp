@@ -52,7 +52,7 @@ static int get_key_or_signal(MJPEGOptions const *options, pollfd p[1])
 	return key;
 }
 
-// The main even loop for the application.
+// The main event loop for the application.
 
 enum class OutputState
 {
