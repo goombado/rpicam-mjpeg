@@ -10,6 +10,7 @@
 
 #include "circular_output.hpp"
 #include "file_output.hpp"
+#include "file_output_mjpeg.hpp"
 #include "net_output.hpp"
 #include "output.hpp"
 
@@ -112,6 +113,14 @@ Output *Output::Create(VideoOptions const *options)
 		return new FileOutput(options);
 	else
 		return new Output(options);
+}
+
+Output *Output::Create(MJPEGOptions const *options, RPiCamMJPEGEncoder *encoder)
+{
+	if (!options->output.empty())
+		return new FileOutputMJPEG(options, encoder);
+	else
+		return Create((const VideoOptions *)options);
 }
 
 void Output::MetadataReady(libcamera::ControlList &metadata)

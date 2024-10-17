@@ -275,7 +275,7 @@ public:
 		image_options_ = std::make_unique<MJPEGOptions>(*GetOptions());
 		LOG(2, "Initialising options...");
 
-		lores_options_->output = options->mjpeg_output;
+		lores_options_->output = options->mjpeg_output + ".tmp";
 		lores_options_->codec = "mjpeg";
 		lores_options_->segment = 1;
 		lores_options_->width = options->lores_width;
@@ -284,6 +284,13 @@ public:
 		image_options_->quality = options->image_quality;
 		image_options_->width = options->image_width;
 		image_options_->height = options->image_height;
+	}
+
+	void MoveTempMJPEGOutput()
+	{
+		std::string lores_output = lores_options_->output;
+		std::string mjpeg_output = GetOptions()->mjpeg_output;
+		std::filesystem::rename(lores_output, mjpeg_output);
 	}
 
 protected:
