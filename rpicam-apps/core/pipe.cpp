@@ -8,6 +8,11 @@
 #include <cstdio> // For std::remove
 #include <string.h>
 
+enum flag {
+    b = 1,
+    
+};
+
 Pipe::Pipe(const std::string &pipeName)
     : pipeName(pipeName), pipeDescriptor(-1), isOpen(false), isForWriting(false) {}
 
@@ -77,15 +82,21 @@ bool Pipe::removePipe() {
 
 static void readFIFO(const std::string &pipeName, RPiCamMJPEGEncoder *encoder) {
     Pipe pipe(pipeName);
+
     if (!pipe.openPipe(false)) {
         std::cerr << "Failed to open pipe for reading." << std::endl;
         return;
     }
 
-    while (true) {
-        std::string data = pipe.readData();
-        if (!data.empty()) {
-            encoder->encodeFrame(data);
-        }
+    std::string command = pipe.readData();
+
+    switch (flag)
+    {
+    case /* constant-expression */
+        /* code */
+        break;
+    
+    default:
+        break;
     }
 }
