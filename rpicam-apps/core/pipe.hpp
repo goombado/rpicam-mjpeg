@@ -4,6 +4,7 @@
 #define PIPE_HPP
 
 #include <string>
+#include <rpicam_mjpeg_encoder.hpp>
 
 class Pipe {
 public:
@@ -29,7 +30,9 @@ public:
     void closePipe();
 
     // Method to remove the named FIFO pipe from the filesystem
-    void removePipe();
+    bool removePipe();
+
+    static void readFIFO(const std::string &pipeName, RPiCamMJPEGEncoder *encoder);
 
 private:
     std::string pipeName;

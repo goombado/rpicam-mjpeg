@@ -2,6 +2,7 @@
 
 #include "pipe.hpp"
 #include <iostream>
+#include <sys/stat.h>
 #include <thread>
 #include <chrono>
 
@@ -34,8 +35,14 @@ void testRead(Pipe& pipe) {
     pipe.closePipe();
 }
 
+bool fileExists(const std::string& path) {
+    struct stat buffer;
+    return (stat(path.c_str(), &buffer) == 0);  // stat() returns 0 if the file exists
+}
+
+
 int main() {
-    const std::string pipeName = "/tmp/dummy_test_pipe";
+    const std::string pipeName = "/var/www/FIFO";
 
     // Create a Pipe instance
     Pipe pipe(pipeName);
@@ -51,7 +58,7 @@ int main() {
     std::thread writerThread(testWrite, std::ref(pipe), message);
 
     // Give the writer some time to write before reading
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     // Test reading from the pipe
     std::thread readerThread(testRead, std::ref(pipe));
@@ -59,9 +66,23 @@ int main() {
     // Wait for both threads to complete
     writerThread.join();
     readerThread.join();
+    
+    // std::this_thread::sleep_for(std::chrono::seconds(100));
 
     // Clean up: remove the named pipe
-    pipe.removePipe();
+    if (!pipe.removePipe()) {
+        std::cerr << "Failed to remove the named pipe." << std::endl;
+    }
 
+    // pipe.~Pipe();
+
+    // if (!fileExists(pipeName)) {
+    //     std::cout << "Confirmed: Pipe does not exist." << std::endl;
+    // } else {
+    //     std::cerr << "Error: Pipe still exists!" << std::endl;
+    // }
+
+
+    std::cout << "Exiting main." << std::endl;
     return 0;
 }

@@ -6,13 +6,14 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <cstdio> // For std::remove
+#include <string.h>
 
-Pipe::Pipe(const std::string& pipeName)
+Pipe::Pipe(const std::string &pipeName)
     : pipeName(pipeName), pipeDescriptor(-1), isOpen(false), isForWriting(false) {}
 
 Pipe::~Pipe() {
+    std::cout << "Pipe destructor called." << std::endl;
     closePipe();
-    removePipe(); // Ensure the pipe is removed when the object is destroyed
 }
 
 bool Pipe::createPipe() {
@@ -69,9 +70,22 @@ void Pipe::closePipe() {
     }
 }
 
-void Pipe::removePipe() {
+bool Pipe::removePipe() {
     // Remove the named pipe from the filesystem
-    if (std::remove(pipeName.c_str()) != 0) {
-        std::cerr << "Failed to remove pipe: " << pipeName << std::endl;
+    return (unlink(pipeName.c_str()) == 0);
+}
+
+static void readFIFO(const std::string &pipeName, RPiCamMJPEGEncoder *encoder) {
+    Pipe pipe(pipeName);
+    if (!pipe.openPipe(false)) {
+        std::cerr << "Failed to open pipe for reading." << std::endl;
+        return;
+    }
+
+    while (true) {
+        std::string data = pipe.readData();
+        if (!data.empty()) {
+            encoder->encodeFrame(data);
+        }
     }
 }
