@@ -90,13 +90,13 @@ static void readFIFO(const std::string &pipeName, RPiCamMJPEGEncoder *encoder) {
 
     std::string command = pipe.readData();
 
-    switch (flag)
-    {
-    case /* constant-expression */
-        /* code */
-        break;
+    // switch (flag)
+    // {
+    // case /* constant-expression */
+    //     /* code */
+    //     break;
     
-    default:
-        break;
-    }
+    // default:
+    //     break;
+    // }
 }
