@@ -1,5 +1,5 @@
-{
-    "internal_motion_detect" :
+{    
+       "internal_motion_detect" :
     {
         "motion_noise": 20,
         "motion_threshold": 100,

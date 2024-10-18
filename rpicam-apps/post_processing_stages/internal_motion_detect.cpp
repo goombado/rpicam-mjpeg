@@ -28,9 +28,6 @@ void internalMotionDetectStage::Configure(){
 
     // Setting up the low res stream for us to use
     stream_ = nullptr;
-    if(app_ -> StillStream()){
-        return;
-    }
 
     stream_ = app_ -> LoresStream();
     if(!stream_){
@@ -116,7 +113,7 @@ bool internalMotionDetectStage::Process(CompletedRequestPtr &completed_request){
     // Update the previous frame
     prev_frame = current_frame.clone();
 	return false;
-
+    
 }
 
 void internalMotionDetectStage::Start(){
