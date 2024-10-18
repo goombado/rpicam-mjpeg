@@ -8,9 +8,20 @@
 #include <cstdio> // For std::remove
 #include <string.h>
 
-enum flag {
-    b = 1,
-    
+enum Flag {
+    IO, // image-output
+    MO, // mjpeg-output
+    VO, // video-output
+    MP, // media-path
+    IC, // image-count
+    VC, // video-count
+    BR, // brightness
+    SH, // sharpness
+    CO, // contrast
+    SA, // saturation
+    RO, // rotation
+    SS, // shutter-speed
+    BI // bitrate
 };
 
 Pipe::Pipe(const std::string &pipeName)
@@ -89,14 +100,50 @@ static void readFIFO(const std::string &pipeName, RPiCamMJPEGEncoder *encoder) {
     }
 
     std::string command = pipe.readData();
+    Flag flag;
 
-    // switch (flag)
-    // {
-    // case /* constant-expression */
-    //     /* code */
-    //     break;
+    switch (flag)
+    {
+    case IO: // image-output
+        break;
+
+    case MO: // mjpeg-output
+        break;
+
+    case VO: // video-output
+        break;
+
+    case MP: // media-path
+        break;
+
+    case IC: // image-count
+        break;
     
-    // default:
-    //     break;
-    // }
+    case VC: // video-count
+        break; 
+
+    case BR: // brightness
+        break;
+    
+    case SH: // sharpness
+        break;
+
+    case CO: // contrast
+        break;
+    
+    case SA: // saturation
+        break;
+    
+    case RO: // rotation
+        break;
+    
+    case SS: // shutter-speed
+        break;
+
+    case BI: // bitrate
+        break;
+        
+    default:
+        break;
+    }
 }
