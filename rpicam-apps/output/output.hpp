@@ -20,7 +20,7 @@ class Output
 {
 public:
 	static Output *Create(VideoOptions const *options);
-	static Output *Create(MJPEGOptions const *options, RPiCamMJPEGEncoder *encoder);
+	static Output *Create(VideoOptions const *options, RPiCamMJPEGEncoder *encoder);
 
 	Output(VideoOptions const *options);
 	virtual ~Output();

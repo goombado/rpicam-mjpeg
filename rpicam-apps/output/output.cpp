@@ -115,7 +115,7 @@ Output *Output::Create(VideoOptions const *options)
 		return new Output(options);
 }
 
-Output *Output::Create(MJPEGOptions const *options, RPiCamMJPEGEncoder *encoder)
+Output *Output::Create(VideoOptions const *options, RPiCamMJPEGEncoder *encoder)
 {
 	if (!options->output.empty())
 		return new FileOutputMJPEG(options, encoder);

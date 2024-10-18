@@ -98,7 +98,7 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 	std::unique_ptr<Output> video_output;
 	bool video_outputting = false;
 
-	std::unique_ptr<Output> lores_output = std::unique_ptr<Output>(Output::Create(lores_options, &app));
+	std::unique_ptr<Output> lores_output = std::unique_ptr<Output>(Output::Create((const VideoOptions *)lores_options, &app));
 	app.SetLoresEncodeOutputReadyCallback(std::bind(&Output::OutputReady, lores_output.get(), _1, _2, _3, _4));
 	app.SetLoresMetadataReadyCallback(std::bind(&Output::MetadataReady, lores_output.get(), _1));
 

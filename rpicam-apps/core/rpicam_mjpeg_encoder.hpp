@@ -14,6 +14,8 @@
 #include <time.h>
 #include <ctime>
 
+#include <sys/stat.h>
+
 #include "core/rpicam_app.hpp"
 #include "core/stream_info.hpp"
 #include "core/mjpeg_options.hpp"
@@ -180,6 +182,7 @@ public:
 
 	void StartLoresEncoder()
 	{
+		createParentPath(GetLoresOptions()->output);
 		createLoresEncoder();
 		lores_encoder_->SetInputDoneCallback(std::bind(&RPiCamMJPEGEncoder::loresEncodeBufferDone, this, std::placeholders::_1));
 		lores_encoder_->SetOutputReadyCallback(lores_encode_output_ready_callback_);
@@ -287,7 +290,7 @@ public:
 		image_options_ = std::make_unique<MJPEGOptions>(*GetOptions());
 		LOG(2, "Initialising options...");
 
-		lores_options_->output = options->output_preview + ".tmp";
+		lores_options_->output = options->output_preview;
 		lores_options_->codec = "mjpeg";
 		lores_options_->segment = 1;
 		lores_options_->width = options->lores_width;
@@ -300,9 +303,13 @@ public:
 
 	void MoveTempMJPEGOutput()
 	{
-		std::string lores_output = lores_options_->output;
 		std::string mjpeg_output = GetOptions()->output_preview;
-		std::filesystem::rename(lores_output, mjpeg_output);
+		// create a new string, preview_output, that is the same as mjpeg_output but with the .tmp extension removed
+		std::string preview_output = mjpeg_output.substr(0, mjpeg_output.size() - 4);
+		// if the .tmp file exists, rename it to remove the .tmp extension, overwriting the existing file
+		if (std::filesystem::exists(mjpeg_output))
+			std::filesystem::rename(mjpeg_output, preview_output);
+		
 	}
 
 protected:
@@ -440,8 +447,6 @@ private:
 
 		free(buffer);
 		free(buffer_2);
-
-		std::cout << "file name: " << *name << std::endl;
 	}
 
 
@@ -465,15 +470,34 @@ private:
 			std::filesystem::create_directories(p);
 		}
 
+		struct stat buf;
+        if (stat(p.c_str(), &buf) != 0) {
+            std::cerr << "Error getting status for path: " << path << std::endl;
+            return;
+        }
+
 		for (auto& path : fs::recursive_directory_iterator(p))
 		{
-			try {
-				fs::permissions(path, fs::perms::all); // Uses fs::perm_options::replace.
+			if (chmod(path.path().c_str(), 0777) != 0) {
+				std::cerr << "Error setting permissions on directory: " << path << std::endl;
 			}
-			catch (std::exception& e) {
-				std::cerr << "Error changing permissions in media path: " << e.what() << std::endl;
-			}           
+			if (chown(path.path().c_str(), buf.st_uid, buf.st_gid) != 0) {
+				std::cerr << "Error setting ownership on directory: " << path << std::endl;
+			}
 		}
+
+		if (chmod(p.c_str(), 0777) != 0) {
+			std::cerr << "Error setting permissions on directory: " << p << std::endl;
+		}
+		if (chown(p.c_str(), buf.st_uid, buf.st_gid) != 0) {
+			std::cerr << "Error setting ownership on directory: " << p << std::endl;
+		}
+
+	}
+
+	void createParentPath(std::string path) {
+		std::filesystem::path p(path);
+		createPath(p.parent_path());
 	}
 
 	void createMediaPath() {

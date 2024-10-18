@@ -172,6 +172,8 @@ struct MJPEGOptions : public VideoStillOptions
 
         // raw_mode = Mode(raw_mode_string);
 
+        output_preview += ".tmp";
+        std::cout << output_preview << std::endl;
         return true;
     }
 

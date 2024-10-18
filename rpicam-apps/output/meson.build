@@ -3,6 +3,7 @@ rpicam_app_src += files([
     'file_output.cpp',
     'net_output.cpp',
     'output.cpp',
+    'file_output_mjpeg.cpp'
 ])
 
 output_headers = [
@@ -10,6 +11,7 @@ output_headers = [
     'file_output.hpp',
     'net_output.hpp',
     'output.hpp',
+    'file_output_mjpeg.hpp'
 ]
 
 rpicam_app_dep += [exif_dep, jpeg_dep, tiff_dep, png_dep]
