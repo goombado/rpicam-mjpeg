@@ -38,6 +38,88 @@ public:
 
 	RPiCamMJPEGEncoder() : RPiCamApp(std::make_unique<MJPEGOptions>()) {}
 
+	void ConfigureMJPEGImageStill(unsigned int flags = FLAG_STILL_NONE)
+	{
+		LOG(2, "Configuring still capture...");
+
+		MJPEGOptions *options = GetImageOptions();
+		StreamRoles stream_roles = { StreamRole::StillCapture };
+		configuration_ = camera_->generateConfiguration(stream_roles);
+		if (!configuration_)
+			throw std::runtime_error("failed to generate still capture configuration");
+
+		if (flags & FLAG_STILL_BGR)
+			configuration_->at(0).pixelFormat = libcamera::formats::BGR888;
+		else if (flags & FLAG_STILL_RGB)
+			configuration_->at(0).pixelFormat = libcamera::formats::RGB888;
+		else if (flags & FLAG_STILL_BGR48)
+			configuration_->at(0).pixelFormat = libcamera::formats::BGR161616;
+		else if (flags & FLAG_STILL_RGB48)
+			configuration_->at(0).pixelFormat = libcamera::formats::RGB161616;
+		else
+			configuration_->at(0).pixelFormat = libcamera::formats::YUV420;
+
+		if ((flags & FLAG_STILL_BUFFER_MASK) == FLAG_STILL_DOUBLE_BUFFER)
+			configuration_->at(0).bufferCount = 2;
+		else if ((flags & FLAG_STILL_BUFFER_MASK) == FLAG_STILL_TRIPLE_BUFFER)
+			configuration_->at(0).bufferCount = 3;
+		else if (options->buffer_count > 0)
+			configuration_->at(0).bufferCount = options->buffer_count;
+		if (options->width)
+			configuration_->at(0).size.width = options->width;
+		if (options->height)
+			configuration_->at(0).size.height = options->height;
+			
+		configuration_->at(0).colorSpace = libcamera::ColorSpace::Sycc;
+		configuration_->orientation = libcamera::Orientation::Rotate0 * options->transform;
+
+		post_processor_.AdjustConfig("still", &configuration_->at(0));
+
+		configureDenoise(options->denoise == "auto" ? "cdn_fast" : options->denoise);
+
+		setupCapture();
+
+		streams_["still"] = configuration_->at(0).stream();
+
+		// post_processor_.Configure();
+	}
+
+	void ConfigureMJPEGImage(unsigned int flags = FLAG_STILL_NONE)
+	{
+		// being here implies that image_no_teardown is false
+		
+		MJPEGOptions *options = GetImageOptions();
+		if (options->image_stream_type == "still")
+		{
+			ConfigureMJPEGImageStill(flags);
+			return;
+		}
+
+		StreamRoles stream_roles = { StreamRole::Raw };
+		configuration_ = camera_->generateConfiguration(stream_roles);
+		if (!configuration_)
+			throw std::runtime_error("failed to generate RAW still configuration");
+
+		options->image_mode.update(Size(options->image_width, options->image_height), options->framerate);
+		options->image_mode = selectMode(options->image_mode);
+
+		configuration_->at(0).size = options->image_mode.Size();
+		configuration_->at(0).pixelFormat = mode_to_pixel_format(options->image_mode);
+		configuration_->sensorConfig = libcamera::SensorConfiguration();
+		configuration_->sensorConfig->outputSize = options->image_mode.Size();
+		configuration_->sensorConfig->bitDepth = options->image_mode.bit_depth;
+		configuration_->at(0).bufferCount = 2;
+
+		configureDenoise(options->denoise == "auto" ? "cdn_off" : options->denoise);
+		setupCapture();
+
+		streams_["raw"] = configuration_->at(0).stream();
+		// post_processor_.Configure();
+
+		LOG(2, "MJPEG RAW still setup complete");
+	}
+
+
 	void ConfigureMJPEG()
 	{
 		LOG(2, "Configuring MJPEG...");
@@ -45,16 +127,17 @@ public:
 		// Stream 1: H264 Video Recording Stream
 		// Stream 2: Lores stream for MJPEG and motion detection post-processing
 		// Stream 3: image_stream -> RAW stream for image capture
-		StreamRoles stream_roles = { StreamRole::VideoRecording, StreamRole::Viewfinder, StreamRole::Raw };
+		StreamRoles stream_roles = { StreamRole::VideoRecording, StreamRole::Viewfinder };
+
+		MJPEGOptions *options = GetOptions();
+		
+		if (options->image_stream_type == "raw" && options->image_no_teardown)
+			stream_roles.push_back(StreamRole::Raw);
+
 		configuration_ = camera_->generateConfiguration(stream_roles);
 
 		if (!configuration_)
 			throw std::runtime_error("failed to generate MJPEG configuration");
-
-		
-		
-		// Now we get to override any of the default settings from the options->
-		MJPEGOptions *options = GetOptions();
 
 		StreamConfiguration &cfg = configuration_->at(0);
 		cfg.pixelFormat = libcamera::formats::YUV420;
@@ -94,29 +177,31 @@ public:
 		// or to the manually supplied (not yet existing) raw_mode
 		// for now we will assume that images will always be taken at the highest resolution
 		// and later add a raw_mode option to the options class
-		options->mode.update(configuration_->at(0).size, options->framerate);
-		options->image_mode.update(Size(options->image_width, options->image_height), options->framerate);
-		options->image_mode = selectMode(options->image_mode);
+		if (options->image_stream_type == "raw" && options->image_no_teardown)
+		{
+			options->mode.update(configuration_->at(0).size, options->framerate);
+			options->image_mode.update(Size(options->image_width, options->image_height), options->framerate);
+			options->image_mode = selectMode(options->image_mode);
 
-		configuration_->at(2).size = options->image_mode.Size();
-		configuration_->at(2).pixelFormat = mode_to_pixel_format(options->image_mode);
-		configuration_->sensorConfig = libcamera::SensorConfiguration();
-		configuration_->sensorConfig->outputSize = options->image_mode.Size();
-		configuration_->sensorConfig->bitDepth = options->image_mode.bit_depth;
-		configuration_->at(2).bufferCount = configuration_->at(0).bufferCount;
-
+			configuration_->at(2).size = options->image_mode.Size();
+			configuration_->at(2).pixelFormat = mode_to_pixel_format(options->image_mode);
+			configuration_->sensorConfig = libcamera::SensorConfiguration();
+			configuration_->sensorConfig->outputSize = options->image_mode.Size();
+			configuration_->sensorConfig->bitDepth = options->image_mode.bit_depth;
+			configuration_->at(2).bufferCount = configuration_->at(0).bufferCount;
+		}
 
 		configureDenoise(options->denoise == "auto" ? "cdn_fast" : options->denoise);
 		setupCapture();
 
 		streams_["video"] = configuration_->at(0).stream();
 		streams_["lores"] = configuration_->at(1).stream();
-		streams_["raw"] = configuration_->at(2).stream();
+		if (options->image_stream_type == "raw" && options->image_no_teardown)
+			streams_["raw"] = configuration_->at(2).stream();
 
 		post_processor_.Configure();
 
 		LOG(2, "MJPEG setup complete");
-
 	}
 
 	/*
@@ -178,6 +263,7 @@ public:
 		createVideoEncoder();
 		video_encoder_->SetInputDoneCallback(std::bind(&RPiCamMJPEGEncoder::videoEncodeBufferDone, this, std::placeholders::_1));
 		video_encoder_->SetOutputReadyCallback(video_encode_output_ready_callback_);
+		video_outputting_ = true;
 	}
 
 	void StartLoresEncoder()
@@ -186,11 +272,13 @@ public:
 		createLoresEncoder();
 		lores_encoder_->SetInputDoneCallback(std::bind(&RPiCamMJPEGEncoder::loresEncodeBufferDone, this, std::placeholders::_1));
 		lores_encoder_->SetOutputReadyCallback(lores_encode_output_ready_callback_);
+		lores_outputting_ = true;
 	}
 
 	void StartImageSaver()
 	{
 		createImageSaver();
+		image_saver_started_ = true;
 	}
 
 	// This is callback when the encoder gives you the encoded output data.
@@ -254,6 +342,20 @@ public:
 		image_count++;
 	}
 
+	libcamera::Stream *ImageStream()
+	{
+		std::string image_stream = GetOptions()->image_stream_type;
+
+		if (image_stream == "still")
+			return StillStream();
+		else if (image_stream == "raw")
+			return RawStream();
+		else if (image_stream == "lores")
+			return LoresStream();
+		else
+			return VideoStream();
+	}
+
 	MJPEGOptions *GetOptions() const { return static_cast<MJPEGOptions *>(options_.get()); }
 	MJPEGOptions *GetOptions() { return static_cast<MJPEGOptions *>(options_.get()); }
 	MJPEGOptions *GetVideoOptions() const { return static_cast<MJPEGOptions *>(video_options_.get()); ;}
@@ -269,21 +371,28 @@ public:
 		StopLoresEncoder();
 		StopImageSaver();
 	}
-	void StopVideoEncoder() { 
+	void StopVideoEncoder()
+	{ 
 		video_count++;
 		SaveCount();
 		video_encoder_.reset(); 
+		video_outputting_ = false;
 	}
-	void StopLoresEncoder() { 
+	void StopLoresEncoder()
+	{ 
 		lores_encoder_.reset(); 
+		lores_outputting_ = false;
 	}
-	void StopImageSaver() {
+	void StopImageSaver()
+	{
 		SaveCount();
 		image_saver_->stop();
 		image_saver_.reset();
+		image_saver_started_ = false;
 	}
 
-	void InitialiseOptions() {
+	void InitialiseOptions()
+	{
 		MJPEGOptions *options = GetOptions();
 		video_options_ = std::make_unique<MJPEGOptions>(*GetOptions());
 		lores_options_ = std::make_unique<MJPEGOptions>(*GetOptions());
@@ -299,6 +408,7 @@ public:
 		image_options_->quality = options->image_quality;
 		image_options_->width = options->image_width;
 		image_options_->height = options->image_height;
+		image_options_->buffer_count = 1;
 	}
 
 	void MoveTempMJPEGOutput()
@@ -312,7 +422,15 @@ public:
 		
 	}
 
+	bool IsVideoOutputting() const { return video_outputting_; }
+	bool IsLoresOutputting() const { return lores_outputting_; }
+	bool IsImageSaverStarted() const { return image_saver_started_; }
+
 protected:
+	bool video_outputting_ = false;
+	bool lores_outputting_ = false;
+	bool image_saver_started_ = false;
+
 	virtual void createVideoEncoder()
 	{
 		StreamInfo info;
@@ -343,12 +461,7 @@ protected:
 	std::unique_ptr<Encoder> lores_encoder_;
 
 	virtual void createImageSaver()
-	{
-		StreamInfo info;
-		RawStream(&info);
-		if (!info.width || !info.height || !info.stride)
-			throw std::runtime_error("raw image stream is not configured");
-		
+	{		
 		image_saver_ = std::unique_ptr<ImageSaver>(new ImageSaver(GetImageOptions(), CameraModel()));
 	}
 	std::unique_ptr<ImageSaver> image_saver_;
@@ -400,6 +513,7 @@ private:
 	EncodeOutputReadyCallback lores_encode_output_ready_callback_;
 	MetadataReadyCallback video_metadata_ready_callback_;
 	MetadataReadyCallback lores_metadata_ready_callback_;
+
 
 	struct timespec currTime;
 	struct tm *localTime;
