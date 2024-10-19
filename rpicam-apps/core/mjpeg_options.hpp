@@ -43,10 +43,8 @@ struct MJPEGOptions : public VideoStillOptions
             "Set the output path for the low resolution preview stream. Can be udp/tcp for network stream")
         ("video-output,vo",value<std::string>(&output_video)->default_value("/var/www/media/vi_%v_%Y%m%d_%H%M%S.mp4"),
             "Set the output path for the video stream. Can be udp/tcp for network stream")
-        ("media-path", value<std::string>(&media_path)->default_value("/var/www/media/"),
+        ("media-path,mp", value<std::string>(&media_path)->default_value("/var/www/media/"),
             "Set the base path for media files")
-        ("raw-mode,rm",value<std::string>(&raw_mode_string),
-			"Raw mode as W:H:bit-depth:packing, where packing is P (packed) or U (unpacked)")
         ("image-count,ic",value<unsigned int>(&image_count),
             "Set the image number for filename")
         ("video-count,vc",value<unsigned int>(&video_count),
