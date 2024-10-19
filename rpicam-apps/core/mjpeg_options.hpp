@@ -9,6 +9,8 @@
 #include <ctime>
 
 #include "video_still_options.hpp"
+#include "video_options.hpp"
+#include "still_options.hpp"
 #include "core/options.hpp"
 
 
@@ -55,6 +57,12 @@ struct MJPEGOptions : public VideoStillOptions
             "Set the height of the image file")
         ("image-mode", value<std::string>(&image_mode_string),
             "Camera mode for image as W:H:bit-depth:packing, where packing is P (packed) or U (unpacked)")
+        ("image-stream-type", value<std::string>(&image_stream_type)->default_value("still"),
+            "Sets the libcamera stream type for image capture. Can be \"raw\", \"still\", \"video\" or \"lores\". If \"video\" or \"lores\" is selected, the settings for their streams will be used for image capture, similar in principal to taking a screenshot of their respective streams.")
+        ("image-raw-convert", value<bool>(&image_raw_convert)->default_value(false)->implicit_value(true),
+            "If \"raw\" is selected for --image-stream-type, this flag will convert the raw image to the format specified by --encoding. If this flag is not set, the raw image will be saved as a DNG file")
+        ("image-no-teardown", value<bool>(&image_no_teardown)->default_value(false)->implicit_value(true),
+            "This will force the image stream to run simultaneously with video and lores streams. If --image-stream-type is \"video\" or \"lores\" this flag is enabled by default, and if it is \"still\" this flag cannot be enabled (stream type \"still\" can not run concurrently with video and lores streams and requires camera teardown)")
         ;
     }
 
@@ -69,6 +77,10 @@ struct MJPEGOptions : public VideoStillOptions
     unsigned int image_height;
     Mode image_mode;
     std::string image_mode_string;
+
+    std::string image_stream_type;
+    bool image_raw_convert;
+    bool image_no_teardown; 
 
 
     /*
@@ -86,104 +98,66 @@ struct MJPEGOptions : public VideoStillOptions
 
         image_mode = Mode(image_mode_string);
 
-        // COMMENTED OUT FOR NOW
-        // if (output_preview.empty())
-        //     {
-        //         output_preview = "/dev/shm/mjpeg/cam.jpg";
-        //         // Testing
-        //         // std::cout << output_preview << std::endl;
-        //     }
-              
-        // if (output_image.empty())
-        //     {
-        //         // This now needs to be changed to just set the template?
-        //         /*
-                
-        //         wait okay so i dont really get what andrei wants, like should the timestamp occur at the start
-        //         or the end of the video capture? isn't the other stream being piped to postprocessing anyways?
+        output_preview += ".tmp";
+        std::cout << output_preview << std::endl;
 
-        //         image_output needs to dynamically grab a timestamp from the start --> need a name to save under.
-                
-        //         */
-                
-        //         output_image = "/var/www/media/im_%i_%Y%m%d_%H%M%S.jpg";
-
-
-        //         // std::string buffer_string = "/var/www/media/im__YYYYMMDD_HHMMSS.jpg";
-        //         // size_t image_buffer_size = buffer_string.size() + MAX_UNSIGNED_INT_LENGTH + NULL_TERMINATOR_LENGTH;
-
-        //         // char* image_buffer = (char*)malloc(image_buffer_size);
-        //         // if (image_buffer == nullptr) {
-        //         //     std::cerr << "Memory allocation failed!" << std::endl;
-        //         //     return 1;
-        //         // }
-            
-        //         // output_image = image_buffer;
-        //         // free(image_buffer);
-
-        //         //====================================================
-                
-            //     std::time_t t = std::time(nullptr);
-            //     std::tm* now = std::localtime(&t);
-
-            //     std::string source_string = "/var/www/media/im_" + std::to_string(image_count) + "_%Y%m%d_%H%M%S.jpg";
-            //     std::string buffer_string = "/var/www/media/im__YYYYMMDD_HHMMSS.jpg";
-            //     size_t image_buffer_size = buffer_string.size()+std::to_string(image_count).length()+1;
-
-            //     char* image_buffer = (char*)malloc(image_buffer_size);
-            //     if (image_buffer == nullptr) {
-            //         std::cerr << "Memory allocation failed!" << std::endl;
-            //         return 1;
-            //     }
-
-            //     std::strftime(image_buffer, image_buffer_size, source_string.c_str(), now);
-            //     output_image = image_buffer;
-            //     free(image_buffer);
-
-            //     // Testing
-            //     // std::cout << output_image << std::endl;
-            // }
-
-        // if (output_video.empty())
-        //     {
-        //         output_video = "/var/www/media/vi_%v_%Y%m%d_%H%M%S.mp4";
-        //         // std::time_t t = std::time(nullptr);
-        //         // std::tm* now = std::localtime(&t);
-
-        //         // std::string source_string = "/var/www/media/vi_" + std::to_string(video_count) + "_%Y%m%d_%H%M%S.mp4";
-        //         // std::string buffer_string = "/var/www/media/vi__YYYYMMDD_HHMMSS.jpg";
-        //         // size_t video_buffer_size = buffer_string.size()+std::to_string(video_count).length()+1;
-                
-        //         // char* video_buffer = (char*)malloc(video_buffer_size);
-        //         // if (video_buffer == nullptr) {
-        //         //     std::cerr << "Memory allocation failed!" << std::endl;
-        //         //     return 1;
-        //         // }
-                
-        //         // std::strftime(video_buffer, video_buffer_size, source_string.c_str(), now);
-        //         // output_video = video_buffer;
-        //         // free(video_buffer);
-
-        //         // Testing
-        //         // std::cout << video_buffer << std::endl;
-        //     }
-
-        // raw_mode = Mode(raw_mode_string);
-
+        if (image_stream_type != "still" && image_stream_type != "raw" && image_stream_type != "video" && image_stream_type != "lores")
+        {
+            std::cerr << "Invalid image separate stream option: " << image_stream_type << std::endl;
+            return false;
+        }
+        if (image_stream_type != "raw")
+            no_raw = true;
+        
+        if (image_stream_type == "video" || image_stream_type == "lores")
+            image_no_teardown = true;
+        else if (image_stream_type == "still" && image_no_teardown)
+        {
+            std::cerr << "Cannot run still stream concurrently with video and lores streams" << std::endl;
+            return false;
+        }
+        
         return true;
+        
     }
 
     void Print() const override
     {
         VideoStillOptions::Print();
-        std::cout << "===============================================" << std::endl;
-        std::cout << "Image output: " << output_image << std::endl;
-        std::cout << "Video output: " << output_video << std::endl;
-        std::cout << "MJPEG output: " << output_preview << std::endl;
-        std::cout << "Media path: " << media_path << std::endl;
-        std::cout << "Image width: " << image_width << std::endl;
-        std::cout << "Image height: " << image_height << std::endl;
-        std::cout << "Image mode: " << image_mode_string << std::endl;
+        std::cout << "    Image output: " << output_image << std::endl;
+        std::cout << "    Video output: " << output_video << std::endl;
+        std::cout << "    MJPEG output: " << output_preview << std::endl;
+        std::cout << "    Media path: " << media_path << std::endl;
+        std::cout << "    Image width: " << image_width << std::endl;
+        std::cout << "    Image height: " << image_height << std::endl;
+        std::cout << "    Image mode: " << image_mode_string << std::endl;
+        std::cout << "    Image stream type: " << image_stream_type << std::endl;
+        std::cout << "    Raw image convert: " << (image_raw_convert ? "true" : "false") << std::endl;
+        std::cout << "    Image no teardown: " << (image_no_teardown ? "true" : "false") << std::endl;
+    }
+
+    StillOptions* GetStillOptions()
+    {
+        StillOptions* still_options = new StillOptions();
+        still_options->quality = image_quality;
+        still_options->exif = exif;
+        still_options->timelapse = timelapse;
+        still_options->framestart = framestart;
+        still_options->datetime = datetime;
+        still_options->timestamp = timestamp;
+        still_options->restart = restart;
+        still_options->keypress = keypress;
+        still_options->signal = signal;
+        still_options->thumb = thumb;
+        still_options->thumb_width = thumb_width;
+        still_options->thumb_height = thumb_height;
+        still_options->thumb_quality = thumb_quality;
+        still_options->encoding = encoding;
+        still_options->raw = raw;
+        still_options->latest = latest;
+        still_options->zsl = zsl;
+
+        return still_options;
     }
 };
 

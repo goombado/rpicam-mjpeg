@@ -78,9 +78,13 @@ class ImageSaver {
             if (options_->wrap)
                 options_->framestart %= options_->wrap;
             
-            std::lock_guard<std::mutex> guard(active_threads_mutex_);
-            active_threads_.emplace_back(dng_convert, options_, filename, info);
-            active_threads_.back().detach();
+            if (options_->image_stream_type == "raw" && options_->image_raw_convert)
+            {
+                std::lock_guard<std::mutex> guard(active_threads_mutex_);
+                active_threads_.emplace_back(dng_convert, options_, filename, info);
+                active_threads_.back().detach();
+            }
+            std::cout << "Finished saving image at " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count() << std::endl;
         }
 
         void stop()
@@ -97,20 +101,31 @@ class ImageSaver {
             // if (options_->raw)
             
             // set the dng filename to be the filename with the .dng extension
-            std::string dng_filename = filename + ".dng";
-            dng_save(mem, info, payload->metadata, dng_filename, camera_model_, (StillOptions*) options_);
-            // else if (options_->encoding == "jpg")
-            // {
-            //     // a hack to make sure the quality attribute is correctly set
-            //     // for the prewritten jpeg_save function
-            //     jpeg_save(mem, info, payload->metadata, filename, camera_model_, (StillOptions*) options_);
-            // }
-            // else if (options_->encoding == "png")
-            //     png_save(mem, info, filename, (StillOptions*) options_);
-            // else if (options_->encoding == "bmp")
-            //     bmp_save(mem, info, filename, (StillOptions*) options_);
-            // else
-            //     yuv_save(mem, info, filename, (StillOptions*) options_);
+            StillOptions* still_options = options_->GetStillOptions();
+
+            if (options_->image_stream_type == "raw")
+            {
+                std::string dng_filename = filename;
+                if (options_->image_raw_convert) // converter looks for file with dng extension
+                    dng_filename += ".dng";
+                    
+                dng_save(mem, info, payload->metadata, dng_filename, camera_model_, still_options);
+                return;
+            }
+
+
+            if (still_options->encoding == "jpg")
+            {
+                // still_options->exif.clear();
+                jpeg_save(mem, info, payload->metadata, filename, camera_model_, still_options);
+            }
+            else if (still_options->encoding == "png")
+                png_save(mem, info, filename, still_options);
+            else if (still_options->encoding == "bmp")
+                bmp_save(mem, info, filename, still_options);
+            else
+                yuv_save(mem, info, filename, still_options);
+            std::cout << "Image saved at " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count() << std::endl;
             LOG(2, "Saved image " << info.width << " x " << info.height << " to file " << filename);
         }
 
@@ -156,7 +171,8 @@ class ImageSaver {
             LOG(2, "Running command: " + dcraw_cmd + ppm_cmd);
             run_command(dcraw_cmd + ppm_cmd);
             run_command("rm -f " + dng_filename);
-            LOG(2, "Finished saving image at " + std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count());
+            // LOG(2, "Finished saving image at " + std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count());
+            std::cout << "Finished converting image at " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count() << std::endl;
         }
         
         MJPEGOptions *options_;

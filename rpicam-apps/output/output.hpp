@@ -12,11 +12,15 @@
 #include <atomic>
 
 #include "core/video_options.hpp"
+#include "core/mjpeg_options.hpp"
+#include "core/rpicam_mjpeg_encoder.hpp"
+
 
 class Output
 {
 public:
 	static Output *Create(VideoOptions const *options);
+	static Output *Create(VideoOptions const *options, RPiCamMJPEGEncoder *encoder);
 
 	Output(VideoOptions const *options);
 	virtual ~Output();

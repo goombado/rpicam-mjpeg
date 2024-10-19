@@ -5,19 +5,19 @@
  * file_output.cpp - Write output to file.
  */
 
-#include "file_output.hpp"
+#include "file_output_mjpeg.hpp"
 
-FileOutput::FileOutput(VideoOptions const *options)
-	: Output(options), fp_(nullptr), count_(0), file_start_time_ms_(0)
+FileOutputMJPEG::FileOutputMJPEG(VideoOptions const *options, RPiCamMJPEGEncoder *encoder)
+    : Output(options), fp_(nullptr), file_start_time_ms_(0), count_(0), encoder_(encoder)
 {
 }
 
-FileOutput::~FileOutput()
+FileOutputMJPEG::~FileOutputMJPEG()
 {
 	closeFile();
 }
 
-void FileOutput::outputBuffer(void *mem, size_t size, int64_t timestamp_us, uint32_t flags)
+void FileOutputMJPEG::outputBuffer(void *mem, size_t size, int64_t timestamp_us, uint32_t flags)
 {
 	// We need to open a new file if we're in "segment" mode and our segment is full
 	// (though we have to wait for the next I frame), or if we're in "split" mode
@@ -31,7 +31,7 @@ void FileOutput::outputBuffer(void *mem, size_t size, int64_t timestamp_us, uint
 		openFile(timestamp_us);
 	}
 
-	LOG(2, "FileOutput: output buffer " << mem << " size " << size);
+	LOG(2, "FileOutputMJPEG: output buffer " << mem << " size " << size);
 	if (fp_ && size)
 	{
 		if (fwrite(mem, size, 1, fp_) != 1)
@@ -41,7 +41,7 @@ void FileOutput::outputBuffer(void *mem, size_t size, int64_t timestamp_us, uint
 	}
 }
 
-void FileOutput::openFile(int64_t timestamp_us)
+void FileOutputMJPEG::openFile(int64_t timestamp_us)
 {
 	if (options_->output == "-")
 		fp_ = stdout;
@@ -60,20 +60,23 @@ void FileOutput::openFile(int64_t timestamp_us)
 		fp_ = fopen(filename, "w");
 		if (!fp_)
 			throw std::runtime_error("failed to open output file " + std::string(filename));
-		LOG(2, "FileOutput: opened output file " << filename);
+		LOG(2, "FileOutputMJPEG: opened output file " << filename);
 
 		file_start_time_ms_ = timestamp_us / 1000;
 	}
 }
 
-void FileOutput::closeFile()
+void FileOutputMJPEG::closeFile()
 {
 	if (fp_)
 	{
 		if (options_->flush)
 			fflush(fp_);
-		if (fp_ != stdout)
+		if (fp_ != stdout) {
 			fclose(fp_);
+		}
 		fp_ = nullptr;
 	}
+	
+    encoder_->MoveTempMJPEGOutput();
 }
