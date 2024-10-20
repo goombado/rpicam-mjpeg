@@ -6,6 +6,7 @@
  */
 
 #pragma once
+#include "core/pipe.hpp"
 
 #include <string>
 #include <filesystem>
@@ -29,6 +30,18 @@
 
 typedef std::function<void(void *, size_t, int64_t, bool)> EncodeOutputReadyCallback;
 typedef std::function<void(libcamera::ControlList &)> MetadataReadyCallback;
+
+enum FIFORequest
+{
+	NONE,
+	STOP,
+	RESTART,
+	START_VIDEO,
+	STOP_VIDEO,
+	CAPTURE_IMAGE,
+	TIMELAPSE,
+	UNKNOWN
+};
 
 class RPiCamMJPEGEncoder : public RPiCamApp
 {
@@ -343,6 +356,7 @@ public:
 		image_saver_->SaveImage(mem, completed_request, info);
 
 		image_count++;
+		image_requested_ = false;
 	}
 
 	libcamera::Stream *ImageStream()
@@ -397,6 +411,7 @@ public:
 	void InitialiseOptions()
 	{
 		MJPEGOptions *options = GetOptions();
+		
 		video_options_ = std::make_unique<MJPEGOptions>(*GetOptions());
 		lores_options_ = std::make_unique<MJPEGOptions>(*GetOptions());
 		image_options_ = std::make_unique<MJPEGOptions>(*GetOptions());
@@ -415,8 +430,62 @@ public:
 
 		SetVideoCaptureDuration(options->video_capture_duration * 1000);
 		SetVideoSplitInterval(options->video_split_interval * 1000);
+	}
 
+	void ReinitialiseOptions()
+	{
+		std::vector<std::string> args;
+		GetOptions()->ReconstructArgs(args);
 
+		std::vector<const char*> argv;
+		for (const auto& str : args) {
+			argv.push_back(str.c_str());
+		}
+
+		if (!GetOptions()->Parse(args.size(), const_cast<char**>(argv.data())))
+		{
+			std::cerr << "Could not parse new options" << std::endl;
+			if (GetOptions()->verbose >= 2)
+				GetOptions()->Print();
+			ClosePipes();
+			StopEncoders();
+			Teardown();
+			StopCamera();
+			exit(-1);
+		}
+
+		InitialiseOptions();
+	}
+
+	void ResetConfiguration()
+	{
+		configuration_.reset();
+		streams_.clear();
+	}
+
+	void InitialisePipes()
+	{
+		LOG(2, "Initialising pipes...");
+		control_pipe_ = std::make_unique<Pipe>(GetOptions()->control_file);
+		control_pipe_->createPipe();
+		control_pipe_->openPipe(false);
+		motion_pipe = std::make_unique<Pipe>(GetOptions()->motion_pipe);
+		motion_pipe->createPipe();
+		// motion_pipe->openPipe(true);
+	}
+
+	void ClosePipes()
+	{
+		control_pipe_->closePipe();
+		control_pipe_->removePipe();
+		motion_pipe->closePipe();
+		motion_pipe->removePipe();
+	}
+
+	void ReadControlFIFO()
+	{
+		last_fifo_read_time = std::chrono::high_resolution_clock::now();
+		control_pipe_->readFIFO(this);
 	}
 
 	void MoveTempMJPEGOutput()
@@ -427,8 +496,13 @@ public:
 		// if the .tmp file exists, rename it to remove the .tmp extension, overwriting the existing file
 		if (std::filesystem::exists(mjpeg_output))
 			std::filesystem::rename(mjpeg_output, preview_output);
-		
 	}
+
+	void SetFifoRequest(FIFORequest request) { fifo_request_ = request; }
+	FIFORequest GetFifoRequest() const { return fifo_request_; }
+	void ResetFifoRequest() { fifo_request_ = NONE; }
+	void SetLastFifoCommand(std::string command) { fifo_command_ = command; }
+	std::string GetLastFifoCommand() const { return fifo_command_; }
 
 	bool IsVideoOutputting() const { return video_outputting_; }
 	bool IsLoresOutputting() const { return lores_outputting_; }
@@ -446,13 +520,17 @@ public:
 	std::chrono::time_point<std::chrono::high_resolution_clock> GetLastVideoSplitTime() { return last_video_split_time; }
 	std::chrono::duration<double> GetVideoSplitInterval() { return video_split_interval; }
 
-	void UpdateLastFifoReadTime() { last_fifo_read_time = std::chrono::high_resolution_clock::now(); }
 	std::chrono::time_point<std::chrono::high_resolution_clock> GetLastFifoReadTime() { return last_fifo_read_time; }
+
+	void RequestImage() { image_requested_ = true; }
+	bool IsImageRequested() { return image_requested_; }
 
 protected:
 	bool video_outputting_ = false;
 	bool lores_outputting_ = false;
 	bool image_saver_started_ = false;
+
+	bool image_requested_ = false;
 
 	virtual void createVideoEncoder()
 	{
@@ -493,7 +571,11 @@ protected:
 	std::unique_ptr<MJPEGOptions> lores_options_;
 	std::unique_ptr<MJPEGOptions> image_options_;
 
+	FIFORequest fifo_request_ = NONE;
+	std::string fifo_command_;
 
+	std::unique_ptr<Pipe> control_pipe_;
+	std::unique_ptr<Pipe> motion_pipe; 
 private:
 	void videoEncodeBufferDone(void *mem)
 	{
