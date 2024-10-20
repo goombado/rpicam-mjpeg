@@ -71,7 +71,7 @@ static std::unique_ptr<Output> createVideoOutput(MJPEGOptions const *options, RP
 	std::unique_ptr<Output> video_output =  std::unique_ptr<Output>(Output::Create((VideoOptions*) options));
 	app.SetVideoEncodeOutputReadyCallback(std::bind(&Output::OutputReady, video_output.get(), _1, _2, _3, _4));
 	app.SetVideoMetadataReadyCallback(std::bind(&Output::MetadataReady, video_output.get(), _1));
-	return video_output;
+	return std::move(video_output);
 }
 
 static std::unique_ptr<Output> createLoresOutput(MJPEGOptions const *options, RPiCamMJPEGEncoder &app)
@@ -79,21 +79,24 @@ static std::unique_ptr<Output> createLoresOutput(MJPEGOptions const *options, RP
 	std::unique_ptr<Output> lores_output = std::unique_ptr<Output>(Output::Create((VideoOptions*) options));
 	app.SetLoresEncodeOutputReadyCallback(std::bind(&Output::OutputReady, lores_output.get(), _1, _2, _3, _4));
 	app.SetLoresMetadataReadyCallback(std::bind(&Output::MetadataReady, lores_output.get(), _1));
-	return lores_output;
+	return std::move(lores_output);
 }
 
-static std::unique_ptr<Output> startVideoOutput(MJPEGOptions const *options, RPiCamMJPEGEncoder &app)
+static std::unique_ptr<Output> startVideoOutput(MJPEGOptions const *options, RPiCamMJPEGEncoder &app, bool new_video = false)
 {
 	std::unique_ptr<Output> video_output = createVideoOutput(options, app);
 	app.StartVideoEncoder();
-	return video_output;
+	if (new_video)
+		app.UpdateLastVideoCaptureTime();
+
+	return std::move(video_output);
 }
 
 static std::unique_ptr<Output> startLoresOutput(MJPEGOptions const *options, RPiCamMJPEGEncoder &app)
 {
 	std::unique_ptr<Output> lores_output = createLoresOutput(options, app);
 	app.StartLoresEncoder();
-	return lores_output;
+	return std::move(lores_output);
 }
 
 static void stopVideoOutput(std::unique_ptr<Output> &video_output, RPiCamMJPEGEncoder &app)
@@ -172,8 +175,33 @@ static void stopMJPEG(RPiCamMJPEGEncoder &app, std::unique_ptr<Output> &video_ou
 	teardownMJPEG(app, video_output, lores_output);
 }
 
+static std::unique_ptr<Output> encodeVideoBuffer(CompletedRequestPtr &completed_request, RPiCamMJPEGEncoder &app, std::unique_ptr<Output> &video_output)
+{
+	// get now as ms
+	app.VideoEncodeBuffer(completed_request, app.VideoStream());
+
+	auto now = std::chrono::high_resolution_clock::now();
+	if (now - app.GetLastVideoCaptureTime() >= app.GetVideoCaptureDuration())
+	{
+		LOG(0, "Video timeout reached, stopping video encoder");
+		stopVideoOutput(video_output, app);
+	}
+	else if (now - app.GetLastVideoSplitTime() >= app.GetVideoSplitInterval())
+	{
+		LOG(2, "Video segment timeout reached, saving to new video file");
+		stopVideoOutput(video_output, app);
+		app.UpdateLastVideoSplitTime();
+		video_output = startVideoOutput(app.GetVideoOptions(), app);
+	}
+
+	return std::move(video_output);
+}
+
 static void event_loop(RPiCamMJPEGEncoder &app)
 {
+	app.InitialiseCount();
+	app.InitialiseOptions();
+
 	MJPEGOptions const *options = app.GetOptions();
 	MJPEGOptions const *video_options = app.GetVideoOptions();
 
@@ -185,7 +213,9 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 
 	auto start_time = std::chrono::high_resolution_clock::now();
 	auto last_time = std::chrono::high_resolution_clock::now();
-	OutputState state = OutputState::None1;
+
+	// this is relevant only for demo mode
+	OutputState state = OutputState::None0;
 
 	// Monitoring for keypresses and signals.
 	signal(SIGUSR1, default_signal_handler);
@@ -199,6 +229,14 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 
 	for (unsigned int count = 0; ; count++)
 	{
+		// if number of microseconds since last fifo read time exceeds options->fifo_interval, read from fifo
+		if (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - app.GetLastFifoReadTime()).count() >= options->fifo_interval)
+		{
+			app.UpdateLastFifoReadTime();
+		}
+		
+
+
 		RPiCamMJPEGEncoder::Msg msg = app.Wait();
 		if (msg.type == RPiCamApp::MsgType::Timeout)
 		{
@@ -331,9 +369,6 @@ int main(int argc, char *argv[])
 			if (options->verbose >= 2)
 				options->Print();
 			
-			app.InitialiseCount();
-			app.InitialiseOptions();
-			LOG(2, "past initialise options");
 			event_loop(app);
 		}
 	}

@@ -4,7 +4,8 @@
 #define PIPE_HPP
 
 #include <string>
-#include <rpicam_mjpeg_encoder.hpp>
+
+#include "rpicam_mjpeg_encoder.hpp"
 
 class Pipe {
 public:

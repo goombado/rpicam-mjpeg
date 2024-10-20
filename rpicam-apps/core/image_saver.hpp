@@ -116,7 +116,6 @@ class ImageSaver {
 
             if (still_options->encoding == "jpg")
             {
-                // still_options->exif.clear();
                 jpeg_save(mem, info, payload->metadata, filename, camera_model_, still_options);
             }
             else if (still_options->encoding == "png")

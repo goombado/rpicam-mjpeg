@@ -91,7 +91,7 @@ bool Pipe::removePipe() {
     return (unlink(pipeName.c_str()) == 0);
 }
 
-static void readFIFO(const std::string &pipeName, RPiCamMJPEGEncoder *encoder) {
+static void readFIFO(const std::string &pipeName, RPiCamMJPEGEncoder *app) {
     Pipe pipe(pipeName);
 
     if (!pipe.openPipe(false)) {
@@ -117,6 +117,7 @@ static void readFIFO(const std::string &pipeName, RPiCamMJPEGEncoder *encoder) {
         break;
 
     case IC: // image-count
+        
         break;
     
     case VC: // video-count

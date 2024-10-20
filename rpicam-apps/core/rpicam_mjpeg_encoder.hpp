@@ -251,6 +251,9 @@ public:
 		file.close();
 	}
 
+	void SetImageCount(unsigned int count) { image_count = count; }
+	void SetVideoCount(unsigned int count) { video_count = count; }
+
 	void StartEncoders()
 	{
 		StartVideoEncoder();
@@ -409,6 +412,11 @@ public:
 		image_options_->width = options->image_width;
 		image_options_->height = options->image_height;
 		image_options_->buffer_count = 1;
+
+		SetVideoCaptureDuration(options->video_capture_duration * 1000);
+		SetVideoSplitInterval(options->video_split_interval * 1000);
+
+
 	}
 
 	void MoveTempMJPEGOutput()
@@ -425,6 +433,21 @@ public:
 	bool IsVideoOutputting() const { return video_outputting_; }
 	bool IsLoresOutputting() const { return lores_outputting_; }
 	bool IsImageSaverStarted() const { return image_saver_started_; }
+
+	// set time of video capture, video capture timeout duration, time of last video segment, and video segment duration
+	void UpdateLastVideoCaptureTime() { last_video_capture_time = std::chrono::high_resolution_clock::now(); }
+	void SetVideoCaptureDuration(double timeout) { video_capture_duration = std::chrono::duration<double>(timeout); }
+	void UpdateLastVideoSplitTime() { last_video_split_time = std::chrono::high_resolution_clock::now(); }
+	void SetVideoSplitInterval(double duration) { video_split_interval = std::chrono::duration<double>(duration); }
+
+	// get time of video capture, video capture timeout duration, time of last video segment, and video segment duration
+	std::chrono::time_point<std::chrono::high_resolution_clock> GetLastVideoCaptureTime() { return last_video_capture_time; }
+	std::chrono::duration<double> GetVideoCaptureDuration() { return video_capture_duration; }
+	std::chrono::time_point<std::chrono::high_resolution_clock> GetLastVideoSplitTime() { return last_video_split_time; }
+	std::chrono::duration<double> GetVideoSplitInterval() { return video_split_interval; }
+
+	void UpdateLastFifoReadTime() { last_fifo_read_time = std::chrono::high_resolution_clock::now(); }
+	std::chrono::time_point<std::chrono::high_resolution_clock> GetLastFifoReadTime() { return last_fifo_read_time; }
 
 protected:
 	bool video_outputting_ = false;
@@ -514,6 +537,15 @@ private:
 	MetadataReadyCallback video_metadata_ready_callback_;
 	MetadataReadyCallback lores_metadata_ready_callback_;
 
+	// create variables for time of video capture, video capture timeout duration, time of last video segment, and video segment duration
+	std::chrono::time_point<std::chrono::high_resolution_clock> last_video_capture_time;
+	std::chrono::time_point<std::chrono::high_resolution_clock> last_video_split_time;
+	// set video capture timeout and video segment duration to 0ms
+	std::chrono::duration<double> video_capture_duration = std::chrono::duration<double>(0);
+	std::chrono::duration<double> video_split_interval = std::chrono::duration<double>(0);
+
+
+	std::chrono::time_point<std::chrono::high_resolution_clock> last_fifo_read_time;
 
 	struct timespec currTime;
 	struct tm *localTime;

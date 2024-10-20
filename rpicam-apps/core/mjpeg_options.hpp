@@ -63,6 +63,14 @@ struct MJPEGOptions : public VideoStillOptions
             "If \"raw\" is selected for --image-stream-type, this flag will convert the raw image to the format specified by --encoding. If this flag is not set, the raw image will be saved as a DNG file")
         ("image-no-teardown", value<bool>(&image_no_teardown)->default_value(false)->implicit_value(true),
             "This will force the image stream to run simultaneously with video and lores streams. If --image-stream-type is \"video\" or \"lores\" this flag is enabled by default, and if it is \"still\" this flag cannot be enabled (stream type \"still\" can not run concurrently with video and lores streams and requires camera teardown)")
+        ("video-capture-duration,vt", value<unsigned int>(&video_capture_duration)->default_value(0),
+            "Sets video capture duration in seconds. If set to 0, video will keep recording until stopped.")
+        ("video-split-interval,vi", value<unsigned int>(&video_split_interval)->default_value(0),
+            "Sets video split interval in seconds. If set to 0, video will not be split.")
+        ("fifo-interval", value<unsigned int>(&fifo_interval)->default_value(100000),
+            "Sets the interval in microseconds for the named pipe to be read from")
+        ("demo", value<bool>(&demo)->default_value(false)->implicit_value(true),
+            "Run rpicam-mjpeg in demo mode")
         ;
     }
 
@@ -77,10 +85,13 @@ struct MJPEGOptions : public VideoStillOptions
     unsigned int image_height;
     Mode image_mode;
     std::string image_mode_string;
-
     std::string image_stream_type;
     bool image_raw_convert;
-    bool image_no_teardown; 
+    bool image_no_teardown;
+    bool demo;
+    unsigned int video_capture_duration;
+    unsigned int video_split_interval;
+    unsigned int fifo_interval;
 
 
     /*
@@ -114,6 +125,12 @@ struct MJPEGOptions : public VideoStillOptions
         else if (image_stream_type == "still" && image_no_teardown)
         {
             std::cerr << "Cannot run still stream concurrently with video and lores streams" << std::endl;
+            return false;
+        }
+
+        if (fifo_interval <= 0)
+        {
+            std::cerr << "Invalid FIFO interval" << std::endl;
             return false;
         }
         
@@ -159,6 +176,7 @@ struct MJPEGOptions : public VideoStillOptions
 
         return still_options;
     }
+
 };
 
 #endif // MJPEG_OPTIONS_HPP
