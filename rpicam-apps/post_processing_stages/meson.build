@@ -56,6 +56,7 @@ if opencv_dep.found()
         assets_dir / 'sobel_cv.json',
         assets_dir / 'face_detect_cv.json',
         assets_dir / 'annotate_cv.json',
+        assets_dir / 'internal_motion_detect.json',
     ])
 
     opencv_postproc_lib = shared_module('opencv-postproc', opencv_postproc_src,
