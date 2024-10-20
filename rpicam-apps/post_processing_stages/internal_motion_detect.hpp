@@ -52,8 +52,8 @@ class internalMotionDetectStage : public PostProcessingStage{
         int motion_startframes_; // If motion is detected for this amount of frames consectutively, then it is considered motion
         int motion_stopframes_; // Once motion is no longer detected for this amount of frames, then we stop the motion event
         std::string motion_pipe_; // Path to the named pipe to write motion events to
-        int motion_file_; 
-
+        int motion_file_; // Turn on vector capture to file
+        std::string motion_file_path_; // Path to the file to write motion events to
     // parameters needed for motion detection 
         Stream *stream_;
         StreamInfo low_res_info_;

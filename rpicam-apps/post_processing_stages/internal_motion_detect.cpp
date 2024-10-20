@@ -42,6 +42,8 @@ void internalMotionDetectStage::Configure(){
     motion_frame_counter = 0;
     no_motion_counter = 0;
 
+    motion_file_path_ = "/var/www/media/motion.txt";
+
 }
 
 bool internalMotionDetectStage::Process(CompletedRequestPtr &completed_request){
@@ -105,11 +107,9 @@ bool internalMotionDetectStage::Process(CompletedRequestPtr &completed_request){
         if(motion_frame_counter > motion_startframes_){
             // Motion detected
             std::cout << "Motion detected" << std::endl;
-            if(motion_file_){
-                std::ofstream motion_pipe(motion_pipe_);
-                motion_pipe << "1";
-                motion_pipe.close();
-            }
+            std::ofstream motion_pipe(motion_pipe_);
+            motion_pipe << "1";
+            motion_pipe.close();
         }
     } else {
         no_motion_counter++;
@@ -118,11 +118,26 @@ bool internalMotionDetectStage::Process(CompletedRequestPtr &completed_request){
         if(no_motion_counter > motion_stopframes_){
             std::cout << "No motion detected" << std::endl;
             // No motion detected
-            if(motion_file_){
-                std::ofstream motion_pipe(motion_pipe_);
-                motion_pipe << "0";
-                motion_pipe.close();
+            std::ofstream motion_pipe(motion_pipe_);
+            motion_pipe << "0";
+            motion_pipe.close();
+        }
+    }
+
+    // Capture motion vectors to file regardless of motion detection
+    if (motion_file_) {
+        std::ofstream vector_file(motion_file_path_, std::ios::app);
+        if (vector_file.is_open()) {
+            // Write the motion vectors (masked_diff_frame) to the file
+            for (int i = 0; i < masked_diff_frame.rows; ++i) {
+                for (int j = 0; j < masked_diff_frame.cols; ++j) {
+                    vector_file << static_cast<int>(masked_diff_frame.at<uint8_t>(i, j)) << " ";
+                }
+                vector_file << std::endl;
             }
+            vector_file.close();
+        } else {
+            std::cerr << "Unable to open vector capture file" << std::endl;
         }
     }
 
