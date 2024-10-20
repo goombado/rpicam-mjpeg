@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <cstdio> // For std::remove
 #include <string.h>
+#include <unordered_map>
 
 enum Flag {
     IO, // image-output
@@ -99,8 +100,36 @@ static void readFIFO(const std::string &pipeName, RPiCamMJPEGEncoder *encoder) {
         return;
     }
 
-    std::string command = pipe.readData();
+    std::string pipe_data = pipe.readData();
     Flag flag;
+
+    std::stringstream ss(pipe_data); // Initialize a stringstream with the input string
+    std::string command;
+    ss >> command;
+
+    std::unordered_map<std::string, Flag> flag_map = {
+        {"IO", IO},
+        {"MO", MO},
+        {"VO", VO},
+        {"MP", MP},
+        {"IC", IC},
+        {"VC", VC},
+        {"BR", BR},
+        {"SH", SH},
+        {"CO", CO},
+        {"SA", SA},
+        {"RO", RO},
+        {"SS", SS},
+        {"BI", BI}
+    };
+
+    Flag flag = "";
+    if (flag_map.find(command) != flag_map.end()) {
+        Flag flag = flag_map[command];
+    }
+
+    // Need to implement reading of the other arguments following the flag. (using stringstream)
+
 
     switch (flag)
     {
