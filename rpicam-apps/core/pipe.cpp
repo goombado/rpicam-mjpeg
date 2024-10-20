@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <cstdio> // For std::remove
 #include <string.h>
+#include <unordered_map>
 
 enum Flag {
     IO, // image-output
@@ -21,7 +22,24 @@ enum Flag {
     SA, // saturation
     RO, // rotation
     SS, // shutter-speed
-    BI // bitrate
+    BI, // bitrate
+    UNKNOWN
+};
+
+std::unordered_map<std::string, Flag> flag_map = {
+    {"IO", IO},
+    {"MO", MO},
+    {"VO", VO},
+    {"MP", MP},
+    {"IC", IC},
+    {"VC", VC},
+    {"BR", BR},
+    {"SH", SH},
+    {"CO", CO},
+    {"SA", SA},
+    {"RO", RO},
+    {"SS", SS},
+    {"BI", BI}
 };
 
 Pipe::Pipe(const std::string &pipeName)
@@ -99,8 +117,17 @@ static void readFIFO(const std::string &pipeName, RPiCamMJPEGEncoder *encoder) {
         return;
     }
 
-    std::string command = pipe.readData();
+    std::string pipe_data = pipe.readData();
     Flag flag;
+
+    std::stringstream ss(pipe_data);
+    std::string command;
+    ss >> command;
+
+    if (flag_map.find(command) != flag_map.end())
+        flag = flag_map[command];
+    else 
+        flag = UNKNOWN;
 
     switch (flag)
     {
