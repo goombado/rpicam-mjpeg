@@ -447,7 +447,6 @@ public:
 			std::cerr << "Could not parse new options" << std::endl;
 			if (GetOptions()->verbose >= 2)
 				GetOptions()->Print();
-			// ClosePipes();
 			StopEncoders();
 			Teardown();
 			StopCamera();
@@ -473,14 +472,6 @@ public:
 		motion_pipe->createPipe();
 		// motion_pipe->openPipe(true);
 	}
-
-	// void ClosePipes()
-	// {
-	// 	control_pipe_->closePipe();
-	// 	control_pipe_->removePipe();
-	// 	motion_pipe->closePipe();
-	// 	motion_pipe->removePipe();
-	// }
 
 	void ReadControlFIFO()
 	{
