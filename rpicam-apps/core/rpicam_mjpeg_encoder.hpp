@@ -447,7 +447,7 @@ public:
 			std::cerr << "Could not parse new options" << std::endl;
 			if (GetOptions()->verbose >= 2)
 				GetOptions()->Print();
-			ClosePipes();
+			// ClosePipes();
 			StopEncoders();
 			Teardown();
 			StopCamera();
@@ -474,13 +474,13 @@ public:
 		// motion_pipe->openPipe(true);
 	}
 
-	void ClosePipes()
-	{
-		control_pipe_->closePipe();
-		control_pipe_->removePipe();
-		motion_pipe->closePipe();
-		motion_pipe->removePipe();
-	}
+	// void ClosePipes()
+	// {
+	// 	control_pipe_->closePipe();
+	// 	control_pipe_->removePipe();
+	// 	motion_pipe->closePipe();
+	// 	motion_pipe->removePipe();
+	// }
 
 	void ReadControlFIFO()
 	{
@@ -498,8 +498,7 @@ public:
 			std::filesystem::rename(mjpeg_output, preview_output);
 	}
 
-	bool CreateConfigFile() {
-		std::filesystem::path config_path = "/etc/rpicam-mjpeg";
+	bool CreateConfigFile(std::filesystem::path &config_path) {
 		if (!std::filesystem::exists(config_path))
 		{
 			std::ofstream mjpeg_config_file(config_path);
@@ -509,33 +508,37 @@ public:
 				return false;
 			}
 			mjpeg_config_file.close();
+			LOG(2, "Created Config File at: " << config_path);
 			return true;
 		}
 		return true;
 	}
 
-	void WriteOptionsToConfigFile()
+	void WriteOptionToConfigFile(std::string option) 
 	{
-		if (!CreateConfigFile())
+		if (!CreateConfigFile(config_path))
 		{
-			LOG_ERROR("Failed to create /etc/rpicam-mjpeg");
+			LOG_ERROR("Failed to create " << config_path);
 			return;
 		}
-		
-		std::ofstream mjpeg_config_file("/etc/rpicam-mjpeg");
+		std::ofstream mjpeg_config_file(config_path);
 		if (!mjpeg_config_file)
 		{
-			LOG_ERROR("Failed to open /etc/rpicam-mjpeg");
+			LOG_ERROR("Failed to open " << config_path);
 			return;
 		}
+		mjpeg_config_file << option << "\n";
+		mjpeg_config_file.close();
+		LOG(2, "Added Option to Config File: " << option);
 		
-
 	}
 
-	void WriteOptionToConfigFile() 
-	{
+	// void WriteOptionsToConfigFile()
+	// {
 
-	}
+	// }
+
+	std::filesystem::path config_path = "/etc/rpicam-mjpeg";
 
 	void SetFifoRequest(FIFORequest request) { fifo_request_ = request; }
 	FIFORequest GetFifoRequest() const { return fifo_request_; }

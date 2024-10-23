@@ -80,10 +80,15 @@ Pipe::Pipe(const std::string &pipeName)
 Pipe::~Pipe() {
     std::cout << "Pipe destructor called." << std::endl;
     closePipe();
+    removePipe();
 }
 
 bool Pipe::createPipe() {
     // Create the named FIFO (with read and write permissions for everyone)
+    if (access(pipeName.c_str(), F_OK) != -1) {
+        // The pipe already exists
+        return true;
+    }
     if (mkfifo(pipeName.c_str(), 0666) == -1) {
         std::cerr << "Failed to create pipe: " << pipeName << std::endl;
         return false;
@@ -145,7 +150,9 @@ void Pipe::closePipe() {
 
 bool Pipe::removePipe() {
     // Remove the named pipe from the filesystem
-    return (unlink(pipeName.c_str()) == 0);
+    // return (unlink(pipeName.c_str()) == 0);
+    std::cout << "Removing pipe: " << pipeName << std::endl;
+    return (std::remove(pipeName.c_str()) == 0);
 }
 
 void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {

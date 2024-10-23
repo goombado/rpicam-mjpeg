@@ -425,7 +425,7 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 					break;
 				case FIFORequest::STOP:
 					LOG(2, "Stopping application");
-					app.ClosePipes();
+					// app.ClosePipes();
 					stopMJPEG(app, video_output, lores_output);
 					return;
 				case FIFORequest::RESTART:
@@ -509,6 +509,8 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 
 int main(int argc, char *argv[])
 {
+	std::cout << "Starting rpicam_mjpeg" << std::endl;
+
 	try
 	{
 		RPiCamMJPEGEncoder app;
