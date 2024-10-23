@@ -1,62 +1,62 @@
 name: Build rpicam-apps
 
 on:
-  push:
-    branches:
-      - main
-      - andrei-testing
-  pull_request:
+    push:
+        branches:
+            - main
+            - andrei-testing
+    pull_request:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+    build:
+        runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+        steps:
+              - name: Checkout repository
+                uses: actions/checkout@v3
 
-      - name: Set up cache for libcamera
-        uses: actions/cache@v3
-        id: cache-libs
-        with:
-          path: |
-            ${{ github.workspace }}/lib-install
-          key: ${{ runner.os }}-libs-cache-${{ hashFiles('rpicam-apps/meson.build') }}
-          restore-keys: |
-            ${{ runner.os }}-libs-cache
+              - name: Set up cache for libcamera
+                uses: actions/cache@v3
+                id: cache-libs
+                with:
+                    path: |
+                        ${{ github.workspace }}/lib-install
+                    key: ${{ runner.os }}-libs-cache-${{ hashFiles('rpicam-apps/meson.build') }}
+                    restore-keys: |
+                        ${{ runner.os }}-libs-cache
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libboost-all-dev libunwind-dev ninja-build \
-          libboost-dev libgnutls28-dev openssl libtiff-dev pybind11-dev \
-          qtbase5-dev libqt5core5a libqt5widgets5 cmake python3-yaml \
-          python3-ply libglib2.0-dev libgstreamer-plugins-base1.0-dev \
-          libdrm-dev libexif-dev libavcodec-dev libavdevice-dev \
-          libpng-dev libepoxy-dev libboost-program-options-dev libopencv-dev \
-          python3-dev python3-pip dcraw netpbm libjpeg-dev libjpeg-turbo-progs
-          sudo pip3 install --upgrade pybind11 meson ninja
+              - name: Install dependencies
+                run: |
+                    sudo apt-get update
+                    sudo apt-get install -y libboost-all-dev libunwind-dev ninja-build \
+                    libboost-dev libgnutls28-dev openssl libtiff-dev pybind11-dev \
+                    qtbase5-dev libqt5core5a libqt5widgets5 cmake python3-yaml \
+                    python3-ply libglib2.0-dev libgstreamer-plugins-base1.0-dev \
+                    libdrm-dev libexif-dev libavcodec-dev libavdevice-dev \
+                    libpng-dev libepoxy-dev libboost-program-options-dev libopencv-dev \
+                    python3-dev python3-pip dcraw netpbm libjpeg-dev libjpeg-turbo-progs
+                    sudo pip3 install --upgrade pybind11 meson ninja
 
-      - name: Build and install libcamera
-        if: steps.cache-libs.outputs.cache-hit != 'true'
-        run: |
-          git clone https://github.com/raspberrypi/libcamera
-          cd libcamera
-          meson setup build --buildtype=release -Dpipelines=rpi/vc4,rpi/pisp -Dipas=rpi/vc4,rpi/pisp -Dv4l2=true -Dgstreamer=enabled -Dtest=false -Dlc-compliance=disabled -Dcam=disabled -Dqcam=disabled -Ddocumentation=disabled -Dpycamera=enabled --prefix=${{ github.workspace }}/lib-install
-          ninja -C build install
+              - name: Build and install libcamera
+                if: steps.cache-libs.outputs.cache-hit != 'true'
+                run: |
+                    git clone https://github.com/raspberrypi/libcamera
+                    cd libcamera
+                    meson setup build --buildtype=release -Dpipelines=rpi/vc4,rpi/pisp -Dipas=rpi/vc4,rpi/pisp -Dv4l2=true -Dgstreamer=enabled -Dtest=false -Dlc-compliance=disabled -Dcam=disabled -Dqcam=disabled -Ddocumentation=disabled -Dpycamera=enabled --prefix=${{ github.workspace }}/lib-install
+                    ninja -C build install
 
-      - name: Build rpicam-apps
-        run: |
-          cd rpicam-apps
-          export LIBRARY_PATH=${{ github.workspace }}/lib-install/lib/x86_64-linux-gnu:$LIBRARY_PATH
-          export LD_LIBRARY_PATH=${{ github.workspace }}/lib-install/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
-          export PKG_CONFIG_PATH=${{ github.workspace }}/lib-install/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH
-          meson setup build -Denable_libav=enabled -Denable_drm=enabled -Denable_egl=enabled -Denable_qt=enabled -Denable_opencv=enabled -Denable_tflite=disabled --prefix=${{ github.workspace }}/lib-install
-          meson compile -C build
+              - name: Build rpicam-apps
+                run: |
+                    cd rpicam-apps
+                    export LIBRARY_PATH=${{ github.workspace }}/lib-install/lib/x86_64-linux-gnu:$LIBRARY_PATH
+                    export LD_LIBRARY_PATH=${{ github.workspace }}/lib-install/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+                    export PKG_CONFIG_PATH=${{ github.workspace }}/lib-install/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH
+                    meson setup build -Denable_libav=enabled -Denable_drm=enabled -Denable_egl=enabled -Denable_qt=enabled -Denable_opencv=enabled -Denable_tflite=disabled
+                    meson compile -C build
 
-      - name: Post-build cache save
-        uses: actions/cache@v3
-        with:
-          path: |
-            ${{ github.workspace }}/lib-install
-          key: ${{ runner.os }}-libs-cache-${{ hashFiles('rpicam-apps/meson.build') }}
+              - name: Post-build cache save
+                uses: actions/cache@v3
+                with:
+                    path: |
+                        ${{ github.workspace }}/lib-install
+                    key: ${{ runner.os }}-libs-cache-${{ hashFiles('rpicam-apps/meson.build') }}
