@@ -498,6 +498,45 @@ public:
 			std::filesystem::rename(mjpeg_output, preview_output);
 	}
 
+	bool CreateConfigFile() {
+		std::filesystem::path config_path = "/etc/rpicam-mjpeg";
+		if (!std::filesystem::exists(config_path))
+		{
+			std::ofstream mjpeg_config_file(config_path);
+			if (!mjpeg_config_file)
+			{
+				throw std::runtime_error("Failed to create /etc/rpicam-mjpeg");
+				return false;
+			}
+			mjpeg_config_file.close();
+			return true;
+		}
+		return true;
+	}
+
+	void WriteOptionsToConfigFile()
+	{
+		if (!CreateConfigFile())
+		{
+			LOG_ERROR("Failed to create /etc/rpicam-mjpeg");
+			return;
+		}
+		
+		std::ofstream mjpeg_config_file("/etc/rpicam-mjpeg");
+		if (!mjpeg_config_file)
+		{
+			LOG_ERROR("Failed to open /etc/rpicam-mjpeg");
+			return;
+		}
+		
+
+	}
+
+	void WriteOptionToConfigFile() 
+	{
+
+	}
+
 	void SetFifoRequest(FIFORequest request) { fifo_request_ = request; }
 	FIFORequest GetFifoRequest() const { return fifo_request_; }
 	void ResetFifoRequest() { fifo_request_ = NONE; }
