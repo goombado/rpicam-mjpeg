@@ -20,7 +20,10 @@ jobs:
         id: cache-libs
         with:
           path: |
-            /usr/local/lib/libpisp
+            /usr/local/lib/x86_64-linux-gnu
+            /usr/local/include/libpisp
+            /usr/local/share/libpisp
+            /usr/local/lib/x84_64-linux-gnu/pkgconfig
             /usr/local/lib/libcamera
           key: ${{ runner.os }}-libs-cache
           restore-keys: |
