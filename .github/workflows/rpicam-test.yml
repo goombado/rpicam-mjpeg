@@ -15,7 +15,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up cache for libpisp and libcamera
+      - name: Set up cache for libcamera
         uses: actions/cache@v3
         id: cache-libs
         with:
@@ -37,14 +37,6 @@ jobs:
           python3-dev python3-pip dcraw netpbm libjpeg-dev libjpeg-turbo-progs
           sudo pip3 install --upgrade pybind11 meson ninja
 
-      - name: Build and install libpisp
-        if: steps.cache-libs.outputs.cache-hit != 'true'
-        run: |
-          git clone https://github.com/raspberrypi/libpisp
-          cd libpisp
-          meson setup build --prefix=${{ github.workspace }}/lib-install
-          meson compile -C build
-          sudo meson install -C build
       - name: Build and install libcamera
         if: steps.cache-libs.outputs.cache-hit != 'true'
         run: |
@@ -56,6 +48,7 @@ jobs:
       - name: Build rpicam-apps
         run: |
           cd rpicam-apps
+          export LIBRARY_PATH=${{ github.workspace }}/lib-install/lib:$LIBRARY_PATH
           meson setup build -Denable_libav=enabled -Denable_drm=enabled -Denable_egl=enabled -Denable_qt=enabled -Denable_opencv=enabled -Denable_tflite=disabled
           meson compile -C build
 
