@@ -1,0 +1,63 @@
+name: Build rpicam-apps
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up cache for libpisp and libcamera
+        uses: actions/cache@v3
+        id: cache-libs
+        with:
+          path: |
+            /usr/local/lib/libpisp
+            /usr/local/lib/libcamera
+          key: ${{ runner.os }}-libs-cache
+          restore-keys: |
+            ${{ runner.os }}-libs-cache
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build build-essential cmake python3-pip pkg-config libjpeg-dev libpng-dev
+          # Additional apt dependencies can be added here
+
+      - name: Build and install libpisp
+        if: steps.cache-libs.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/raspberrypi/libpisp
+          cd libpisp
+          meson setup build
+          meson compile -C build
+          sudo meson install -C build
+
+      - name: Build and install libcamera
+        if: steps.cache-libs.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/raspberrypi/libcamera
+          cd libcamera
+          meson setup build --buildtype=release -Dpipelines=rpi/vc4,rpi/pisp -Dipas=rpi/vc4,rpi/pisp -Dv4l2=true -Dgstreamer=enabled -Dtest=false -Dlc-compliance=disabled -Dcam=disabled -Dqcam=disabled -Ddocumentation=disabled -Dpycamera=enabled
+          sudo ninja -C build install
+
+      - name: Build rpicam-apps
+        run: |
+          cd rpicam-apps
+          meson setup build
+          meson compile -C build
+
+      - name: Post-build cache save
+        uses: actions/cache@v3
+        with:
+          path: |
+            /usr/local/lib/libpisp
+            /usr/local/lib/libcamera
+          key: ${{ runner.os }}-libs-cache
