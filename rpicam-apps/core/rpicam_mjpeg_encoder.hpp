@@ -573,7 +573,6 @@ private:
 				std::cerr << "Error creating filename" << std::endl;
 				return;
 			}
-			
 			makeName(filename, name_template1);
 			// free(name_template1);
 		} else {
