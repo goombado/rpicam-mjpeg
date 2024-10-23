@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - andrei-testing
   pull_request:
 
 jobs:
