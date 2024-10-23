@@ -20,13 +20,7 @@ jobs:
         id: cache-libs
         with:
           path: |
-            /usr/local/lib/x86_64-linux-gnu
-            /usr/local/lib/x86_64-linux-gnu/libcamera
-            /usr/local/include/libpisp
-            /usr/local/include/libcamera
-            /usr/local/share/libpisp
-            /usr/local/share/libcamera
-            /usr/local/lib/x84_64-linux-gnu/pkgconfig
+            --prefix=${{ github.workspace }}/lib-install
           key: ${{ runner.os }}-libs-cache
           restore-keys: |
             ${{ runner.os }}-libs-cache
@@ -48,16 +42,15 @@ jobs:
         run: |
           git clone https://github.com/raspberrypi/libpisp
           cd libpisp
-          meson setup build
+          meson setup build --prefix=${{ github.workspace }}/lib-install
           meson compile -C build
           sudo meson install -C build
-
       - name: Build and install libcamera
         if: steps.cache-libs.outputs.cache-hit != 'true'
         run: |
           git clone https://github.com/raspberrypi/libcamera
           cd libcamera
-          meson setup build --buildtype=release -Dpipelines=rpi/vc4,rpi/pisp -Dipas=rpi/vc4,rpi/pisp -Dv4l2=true -Dgstreamer=enabled -Dtest=false -Dlc-compliance=disabled -Dcam=disabled -Dqcam=disabled -Ddocumentation=disabled -Dpycamera=enabled
+          meson setup build --buildtype=release -Dpipelines=rpi/vc4,rpi/pisp -Dipas=rpi/vc4,rpi/pisp -Dv4l2=true -Dgstreamer=enabled -Dtest=false -Dlc-compliance=disabled -Dcam=disabled -Dqcam=disabled -Ddocumentation=disabled -Dpycamera=enabled --prefix=${{ github.workspace }}/lib-install
           sudo ninja -C build install
 
       - name: Build rpicam-apps
@@ -70,11 +63,5 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            /usr/local/lib/x86_64-linux-gnu
-            /usr/local/lib/x86_64-linux-gnu/libcamera
-            /usr/local/include/libpisp
-            /usr/local/include/libcamera
-            /usr/local/share/libpisp
-            /usr/local/share/libcamera
-            /usr/local/lib/x84_64-linux-gnu/pkgconfig
+            --prefix=${{ github.workspace }}/lib-install
           key: ${{ runner.os }}-libs-cache
