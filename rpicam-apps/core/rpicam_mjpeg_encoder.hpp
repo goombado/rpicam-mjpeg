@@ -683,7 +683,10 @@ private:
 		char *name_template1;
 		// if name_template is not an absolute path, prepend the media_path
 		if (name_template[0] != '/') {
-			asprintf(&name_template1,"%s/%s", GetOptions()->media_path.c_str(), name_template.c_str());
+			if (asprintf(&name_template1,"%s/%s", GetOptions()->media_path.c_str(), name_template.c_str()) == -1) {
+				std::cerr << "Error creating filename" << std::endl;
+				return;
+			}
 			makeName(filename, name_template1);
 			// free(name_template1);
 		} else {

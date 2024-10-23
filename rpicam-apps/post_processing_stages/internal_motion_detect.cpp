@@ -28,12 +28,21 @@ void internalMotionDetectStage::Configure(){
 
     // Setting up the low res stream for us to use
     stream_ = nullptr;
-
+    if(app_ -> StillStream()){
+        return;
+    }
+    
     stream_ = app_ -> LoresStream();
     if(!stream_){
         throw std::runtime_error("internalMotionDetectStage: no low resolution stream");
     }
 	low_res_info_ = app_->GetStreamInfo(stream_);
+
+    frame_counter = 0;
+    motion_frame_counter = 0;
+    no_motion_counter = 0;
+
+    motion_file_path_ = "/var/www/media/motion.txt";
 
 }
 
@@ -43,10 +52,6 @@ bool internalMotionDetectStage::Process(CompletedRequestPtr &completed_request){
         return false;
     } 
 
-    frame_counter = 0;
-    motion_frame_counter = 0;
-    no_motion_counter = 0;
-
     // Load grayscale image 
     cv::Mat mask = cv::imread(motion_image_, cv::IMREAD_GRAYSCALE);
     if(mask.empty()){
@@ -54,13 +59,24 @@ bool internalMotionDetectStage::Process(CompletedRequestPtr &completed_request){
         return false;
     }
 
-    //Convert current frame to openCV mat
+    // Convert current frame to openCV mat
     BufferReadSync r(app_, completed_request->buffers[stream_]);
     libcamera::Span<uint8_t> buffer = r.Get()[0];
     uint8_t *ptr = (uint8_t *)buffer.data();
     cv::Mat current_frame(low_res_info_.height, low_res_info_.width, CV_8UC1, ptr);
 
+    // Ensure dimensions match before proceeding with any operations
+    if (mask.size() != current_frame.size() || mask.channels() != current_frame.channels()) {
+        throw std::runtime_error("internalMotionDetectStage: mask and current frame dimensions or channels do not match");
+        return false;
+    }
+
     current_frame_ = current_frame.clone();
+    // Ensure prev_frame is initialized
+    if (prev_frame.empty()) {
+        prev_frame = current_frame_.clone();
+    }
+
     // Check if the initial number of frames has been passed
     if (frame_counter < motion_initframes_){
         prev_frame = current_frame_.clone();
@@ -81,19 +97,19 @@ bool internalMotionDetectStage::Process(CompletedRequestPtr &completed_request){
 
     //Count number of pixels above motion_threshold_
     int motion_pixels = cv::countNonZero(masked_diff_frame > motion_threshold_);
+    std::cout<<"motion_pixels: "<<motion_pixels<<std::endl;
 
     if(motion_pixels > 0){
         motion_frame_counter++;
         no_motion_counter = 0;
+        std::cout<<"motion_frame_counter: "<<motion_frame_counter<<std::endl;
 
         if(motion_frame_counter > motion_startframes_){
             // Motion detected
             std::cout << "Motion detected" << std::endl;
-            if(motion_file_){
-                std::ofstream motion_pipe(motion_pipe_);
-                motion_pipe << "1";
-                motion_pipe.close();
-            }
+            std::ofstream motion_pipe(motion_pipe_);
+            motion_pipe << "1";
+            motion_pipe.close();
         }
     } else {
         no_motion_counter++;
@@ -102,11 +118,26 @@ bool internalMotionDetectStage::Process(CompletedRequestPtr &completed_request){
         if(no_motion_counter > motion_stopframes_){
             std::cout << "No motion detected" << std::endl;
             // No motion detected
-            if(motion_file_){
-                std::ofstream motion_pipe(motion_pipe_);
-                motion_pipe << "0";
-                motion_pipe.close();
+            std::ofstream motion_pipe(motion_pipe_);
+            motion_pipe << "0";
+            motion_pipe.close();
+        }
+    }
+
+    // Capture motion vectors to file regardless of motion detection
+    if (motion_file_) {
+        std::ofstream vector_file(motion_file_path_, std::ios::app);
+        if (vector_file.is_open()) {
+            // Write the motion vectors (masked_diff_frame) to the file
+            for (int i = 0; i < masked_diff_frame.rows; ++i) {
+                for (int j = 0; j < masked_diff_frame.cols; ++j) {
+                    vector_file << static_cast<int>(masked_diff_frame.at<uint8_t>(i, j)) << " ";
+                }
+                vector_file << std::endl;
             }
+            vector_file.close();
+        } else {
+            std::cerr << "Unable to open vector capture file" << std::endl;
         }
     }
 
