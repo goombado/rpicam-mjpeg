@@ -20,7 +20,7 @@ jobs:
         id: cache-libs
         with:
           path: |
-            --prefix=${{ github.workspace }}/lib-install
+            ${{ github.workspace }}/lib-install
           key: ${{ runner.os }}-libs-cache
           restore-keys: |
             ${{ runner.os }}-libs-cache
@@ -58,5 +58,5 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            --prefix=${{ github.workspace }}/lib-install
+            ${{ github.workspace }}/lib-install
           key: ${{ runner.os }}-libs-cache
