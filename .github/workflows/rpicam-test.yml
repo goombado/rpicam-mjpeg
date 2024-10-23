@@ -39,7 +39,7 @@ jobs:
           qtbase5-dev libqt5core5a libqt5widgets5 cmake python3-yaml \
           python3-ply libglib2.0-dev libgstreamer-plugins-base1.0-dev \
           libdrm-dev libexif-dev libavcodec-dev libavdevice-dev \
-          libpng-dev libepoxy-dev libboost-program-options-dev \
+          libpng-dev libepoxy-dev libboost-program-options-dev libopencv-dev \
           python3-dev python3-pip dcraw netpbm libjpeg-dev libjpeg-turbo-progs
           sudo pip3 install --upgrade pybind11 meson ninja
 
