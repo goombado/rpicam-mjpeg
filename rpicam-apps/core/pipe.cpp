@@ -136,16 +136,6 @@ bool Pipe::readData(std::string &data) {
     return false; // Return an empty string if nothing was read
 }
 
-bool Pipe::writeData(const std::string& data) {
-    if (!isOpen || !isForWriting) {
-        std::cerr << "Pipe is not open for writing." << std::endl;
-        return false;
-    }
-
-    ssize_t bytesWritten = write(pipeDescriptor, data.c_str(), data.size());
-    return bytesWritten == static_cast<ssize_t>(data.size());
-}
-
 void Pipe::closePipe() {
     if (isOpen) {
         close(pipeDescriptor);
