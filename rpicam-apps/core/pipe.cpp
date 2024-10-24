@@ -160,15 +160,17 @@ bool Pipe::removePipe() {
 
 void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
 
-    if (!openPipe(false)) {
-        std::cerr << "Failed to open pipe for reading." << std::endl;
-        return;
-    }
+    // if (!openPipe(false)) {
+    //     std::cerr << "Failed to open pipe for reading." << std::endl;
+    //     return;
+    // }
 
     std::string pipe_data;
     if (!readData(pipe_data))
         return;
-    // if last character of pipe_data is newline, remove it
+
+    std::transform(pipe_data.begin(), pipe_data.end(), pipe_data.begin(), ::toupper);
+
     if (pipe_data[pipe_data.size() - 1] == '\n')
         pipe_data.pop_back();
     LOG(2, "Read data from pipe: " << pipe_data);
@@ -182,7 +184,10 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
     LOG(2, "Command: " << command);
 
     if (flag_map.find(command) != flag_map.end())
+    {
         flag = flag_map[command];
+        std::cout << "Flag: " << flag << std::endl;
+    }
     else 
         flag = OTHER;
 
@@ -313,7 +318,10 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
                     app->SetFifoRequest(FIFORequest::STOP_VIDEO);
                 else if (arg == "1")
                 {
-                    app->SetFifoRequest(FIFORequest::START_VIDEO);
+                    if (app->IsVideoOutputting())
+                        app->SetFifoRequest(FIFORequest::STOP_VIDEO);
+                    else
+                        app->SetFifoRequest(FIFORequest::START_VIDEO);
                     if (!ss.eof())
                     {
                         ss >> arg;
@@ -328,12 +336,8 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
             }
             break;
         
-        case IM: // capture image, im 1
-            ss >> arg;
-            if (arg == "1")
-                app->SetFifoRequest(FIFORequest::CAPTURE_IMAGE);
-            else
-                app->SetFifoRequest(FIFORequest::UNKNOWN);
+        case IM: // capture image, im
+            app->SetFifoRequest(FIFORequest::CAPTURE_IMAGE);
             break;
         
         case TL: // Stop/start timelapse, tl 0/1 [t]

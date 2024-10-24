@@ -80,8 +80,12 @@ public:
 			configuration_->at(0).bufferCount = options->buffer_count;
 		if (options->width)
 			configuration_->at(0).size.width = options->width;
+		else
+			configuration_->at(0).size.width = 640;
 		if (options->height)
 			configuration_->at(0).size.height = options->height;
+		else
+			configuration_->at(0).size.height = 360;
 			
 		configuration_->at(0).colorSpace = libcamera::ColorSpace::Sycc;
 		configuration_->orientation = libcamera::Orientation::Rotate0 * options->transform;
@@ -112,6 +116,12 @@ public:
 		configuration_ = camera_->generateConfiguration(stream_roles);
 		if (!configuration_)
 			throw std::runtime_error("failed to generate RAW still configuration");
+
+		if (!options->image_width || !options->image_height)
+		{
+			options->image_width = 640;
+			options->image_height = 360;
+		}
 
 		options->image_mode.update(Size(options->image_width, options->image_height), options->framerate);
 		options->image_mode = selectMode(options->image_mode);
@@ -159,8 +169,12 @@ public:
 			cfg.bufferCount = options->buffer_count;
 		if (options->width)
 			cfg.size.width = options->width;
+		else
+			cfg.size.width = 640;
 		if (options->height)
 			cfg.size.height = options->height;
+		else
+			cfg.size.height = 360;
 
 		// VideoRecording stream should be in Rec709 color space
 		if (cfg.size.width >= 1280 || cfg.size.height >= 720)
@@ -173,6 +187,12 @@ public:
 
 		// next configure the lores Viewfinder stream
 		// we want to make this similar to the current rpicam-apps lores stream
+
+		if (!options->lores_width || !options->lores_height)
+		{
+			options->lores_width = 640;
+			options->lores_height = 360;
+		}
 
 		Size lores_size(options->lores_width, options->lores_height);
 		lores_size.alignDownTo(2, 2);
@@ -192,6 +212,12 @@ public:
 		// and later add a raw_mode option to the options class
 		if (options->image_stream_type == "raw" && options->image_no_teardown)
 		{
+			if (!options->image_width || !options->image_height)
+			{
+				options->image_width = 640;
+				options->image_height = 360;
+			}
+			
 			options->mode.update(configuration_->at(0).size, options->framerate);
 			options->image_mode.update(Size(options->image_width, options->image_height), options->framerate);
 			options->image_mode = selectMode(options->image_mode);
@@ -697,9 +723,11 @@ private:
 
 	void createPath(std::string path) {
 		std::filesystem::path p(path);
-		if (!std::filesystem::exists(p)) {
-			std::filesystem::create_directories(p);
+		if (std::filesystem::exists(p)) {
+			return;
 		}
+
+		std::filesystem::create_directories(p);
 
 		struct stat buf;
         if (stat(p.c_str(), &buf) != 0) {
@@ -709,19 +737,13 @@ private:
 
 		for (auto& path : fs::recursive_directory_iterator(p))
 		{
-			if (chmod(path.path().c_str(), 0777) != 0) {
+			if (chmod(path.path().c_str(), 0755) != 0) {
 				std::cerr << "Error setting permissions on directory: " << path << std::endl;
-			}
-			if (chown(path.path().c_str(), buf.st_uid, buf.st_gid) != 0) {
-				std::cerr << "Error setting ownership on directory: " << path << std::endl;
 			}
 		}
 
-		if (chmod(p.c_str(), 0777) != 0) {
+		if (chmod(p.c_str(), 0755) != 0) {
 			std::cerr << "Error setting permissions on directory: " << p << std::endl;
-		}
-		if (chown(p.c_str(), buf.st_uid, buf.st_gid) != 0) {
-			std::cerr << "Error setting ownership on directory: " << p << std::endl;
 		}
 
 	}

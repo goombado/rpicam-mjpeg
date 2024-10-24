@@ -184,6 +184,7 @@ struct Options
 
 protected:
 	boost::program_options::options_description options_;
+	std::string timeout_;
 
 private:
 	bool hflip_;
@@ -191,7 +192,6 @@ private:
 	int rotation_;
 	float framerate_;
 	std::string lens_position_;
-	std::string timeout_;
 	std::string shutter_;
 	std::string flicker_period_;
 	RPiCamApp *app_;
