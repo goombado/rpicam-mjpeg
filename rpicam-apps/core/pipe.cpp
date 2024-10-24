@@ -62,7 +62,7 @@ std::unordered_map<std::string, Flag> flag_map = {
 bool isFloat(const std::string& s) {
     try {
         std::size_t pos;
-        std::stod(s, &pos);
+        std::stof(s, &pos);
         return pos == s.size();  // Ensures entire string was parsed
     } catch (std::invalid_argument& e) {
         return false;  // Not a number
@@ -225,7 +225,6 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
         flag = OTHER;
 
     std::string arg;
-    MJPEGOptions *options = app->GetOptions();
 
     switch (flag)
     {
@@ -264,13 +263,7 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
             if (!isFloat(arg))
                 app->SetFifoRequest(FIFORequest::UNKNOWN);
             else
-            {
-                float brightness = std::stof(arg);
-                if (brightness < -1.0 || brightness > 1.0)
-                    app->SetFifoRequest(FIFORequest::UNKNOWN);
-                else
-                    options->brightness = brightness;
-            }
+                app->WriteOptionToConfigFile("brightness", arg);
             break;
         
         case SH: // sharpness
@@ -278,13 +271,7 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
             if (!isFloat(arg))
                 app->SetFifoRequest(FIFORequest::UNKNOWN);
             else
-            {
-                float sharpness = std::stof(arg);
-                if (sharpness < 0)
-                    app->SetFifoRequest(FIFORequest::UNKNOWN);
-                else
-                    options->sharpness = sharpness;
-            }
+                app->WriteOptionToConfigFile("sharpness", arg);
             break;
 
         case CO: // contrast
@@ -292,13 +279,7 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
             if (!isFloat(arg))
                 app->SetFifoRequest(FIFORequest::UNKNOWN);
             else
-            {
-                float contrast = std::stof(arg);
-                if (contrast < 0)
-                    app->SetFifoRequest(FIFORequest::UNKNOWN);
-                else
-                    options->contrast = contrast;
-            }
+                app->WriteOptionToConfigFile("contrast", arg);
             break;
         
         case SA: // saturation
@@ -306,25 +287,31 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
             if (!isFloat(arg))
                 app->SetFifoRequest(FIFORequest::UNKNOWN);
             else
-            {
-            float saturation = std::stof(arg);
-            if (saturation < 0)
-                app->SetFifoRequest(FIFORequest::UNKNOWN);
-            else
-                options->saturation = saturation;
-            }
+                app->WriteOptionToConfigFile("saturation", arg);
             break;
         
         case RO: // rotation
-            app->SetFifoRequest(FIFORequest::UNKNOWN);
+            ss >> arg;
+            if (!isInteger(arg))
+                app->SetFifoRequest(FIFORequest::UNKNOWN);
+            else
+                app->WriteOptionToConfigFile("rotation", arg);
             break;
         
-        case SS: // shutter-speed
-            app->SetFifoRequest(FIFORequest::UNKNOWN);
+        case SS: // shutter-speed in microseconds
+            ss >> arg;
+            if (!isInteger(arg))
+                app->SetFifoRequest(FIFORequest::UNKNOWN);
+            else
+                app->WriteOptionToConfigFile("shutter", arg);
             break;
 
-        case BI: // bitrate
-            app->SetFifoRequest(FIFORequest::UNKNOWN);
+        case BI: // bitrate in bits per second for h264 encoder
+            ss >> arg;
+            if (!isInteger(arg))
+                app->SetFifoRequest(FIFORequest::UNKNOWN);
+            else
+                app->WriteOptionToConfigFile("bitrate", arg);
             break;
 
         case RU: // halt/restart rpicam-mjpeg, ru 0/1
