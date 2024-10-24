@@ -7,6 +7,8 @@
 #include <cstdio> // For std::remove
 #include <string.h>
 #include <unordered_map>
+#include <algorithm> // For std::transform
+#include <cctype>    // For std::toupper
 
 #include "pipe.hpp"
 #include "rpicam_mjpeg_encoder.hpp"
@@ -84,6 +86,10 @@ Pipe::~Pipe() {
 
 bool Pipe::createPipe() {
     // Create the named FIFO (with read and write permissions for everyone)
+    if (access(pipeName.c_str(), F_OK) != -1) {
+        // The pipe already exists
+        return true;
+    }
     if (mkfifo(pipeName.c_str(), 0666) == -1) {
         std::cerr << "Failed to create pipe: " << pipeName << std::endl;
         return false;
@@ -173,7 +179,15 @@ void Pipe::closePipe() {
 
 bool Pipe::removePipe() {
     // Remove the named pipe from the filesystem
-    return (unlink(pipeName.c_str()) == 0);
+    // return (unlink(pipeName.c_str()) == 0);
+    std::cout << "Removing pipe: " << pipeName << std::endl;
+    return (std::remove(pipeName.c_str()) == 0);
+}
+
+std::string to_upper(std::string input) {
+    std::transform(input.begin(), input.end(), input.begin(),
+                   ::toupper); // Use the global scope toupper
+    return input;
 }
 
 void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
@@ -197,8 +211,9 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
     Flag flag;
 
     std::stringstream ss(pipe_data);
-    std::string command;
-    ss >> command;
+    std::string command_raw;
+    ss >> command_raw;
+    std::string command = to_upper(command_raw);
     LOG(2, "Command: " << command);
 
     if (flag_map.find(command) != flag_map.end())
@@ -215,26 +230,32 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
     switch (flag)
     {
         case IO: // image-output
+            app->WriteOptionToConfigFile(command_raw, arg);
             app->SetFifoRequest(FIFORequest::UNKNOWN);
             break;
 
         case MO: // mjpeg-output
+            app->WriteOptionToConfigFile(command_raw, arg);
             app->SetFifoRequest(FIFORequest::UNKNOWN);
             break;
 
         case VO: // video-output
+            app->WriteOptionToConfigFile(command_raw, arg);
             app->SetFifoRequest(FIFORequest::UNKNOWN);
             break;
 
         case MP: // media-path
+            app->WriteOptionToConfigFile(command_raw, arg);
             app->SetFifoRequest(FIFORequest::UNKNOWN);
             break;
 
         case IC: // image-count
+            app->WriteOptionToConfigFile(command_raw, arg);
             app->SetFifoRequest(FIFORequest::UNKNOWN);
             break;
 
         case VC: // video-count
+            app->WriteOptionToConfigFile(command_raw, arg);
             app->SetFifoRequest(FIFORequest::UNKNOWN);
             break; 
 

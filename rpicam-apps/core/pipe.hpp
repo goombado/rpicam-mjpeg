@@ -21,11 +21,10 @@ public:
     // Method to open the pipe for reading or writing
     bool openPipe(bool forWriting);
 
+    bool writeData(const std::string& data);
+
     // Method to read data from the pipe
     bool readData(std::string &data);
-
-    // Method to write data to the pipe
-    bool writeData(const std::string& data);
 
     // Method to close the pipe
     void closePipe();

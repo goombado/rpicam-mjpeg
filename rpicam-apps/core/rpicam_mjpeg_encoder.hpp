@@ -10,6 +10,8 @@
 
 #include <string>
 #include <filesystem>
+#include <chrono>
+#include <fstream>
 
 #include <dirent.h>
 #include <time.h>
@@ -473,7 +475,6 @@ public:
 			std::cerr << "Could not parse new options" << std::endl;
 			if (GetOptions()->verbose >= 2)
 				GetOptions()->Print();
-			ClosePipes();
 			StopEncoders();
 			Teardown();
 			StopCamera();
@@ -500,14 +501,6 @@ public:
 		// motion_pipe->openPipe(true);
 	}
 
-	void ClosePipes()
-	{
-		control_pipe_->closePipe();
-		// control_pipe_->removePipe();
-		// motion_pipe->closePipe();
-		// motion_pipe->removePipe();
-	}
-
 	void ReadControlFIFO()
 	{
 		last_fifo_read_time = std::chrono::high_resolution_clock::now();
@@ -523,6 +516,105 @@ public:
 		if (std::filesystem::exists(mjpeg_output))
 			std::filesystem::rename(mjpeg_output, preview_output);
 	}
+
+	bool CreateConfigFile(std::filesystem::path &config_path) {
+		if (!std::filesystem::exists(config_path))
+		{
+			std::ofstream mjpeg_config_file(config_path);
+			if (!mjpeg_config_file)
+			{
+				LOG(2, "Failed to create " << config_path);
+				return false;
+			}
+			mjpeg_config_file.close();
+			LOG(2, "Created Config File at: " << config_path);
+			return true;
+		}
+		LOG(2, "File already exists!");
+		return true;
+	}
+
+	void WriteOptionToConfigFile(std::string command, std::string args) 
+	{
+		if (!CreateConfigFile(config_path))
+		{
+			LOG(2, "Failed to create " << config_path);
+			return;
+		}
+		// Check for flags
+		std::ifstream mjpeg_config_file(config_path);
+    
+		if (!mjpeg_config_file.is_open()) {
+			std::cerr << "Error opening file: " << config_path << std::endl;
+			return;
+		}
+		std::string line;
+		std::stringstream fileContent;
+		bool commandFound = false;
+
+		// check if the command is already in the file
+		while (std::getline(mjpeg_config_file, line)) {
+
+			if (line.rfind(command, 0) == 0) { 
+				line = command + "=" + args;
+				commandFound = true;
+			}
+			fileContent << line << "\n";
+		}
+		mjpeg_config_file.close();
+
+
+		// Split into two cases: command found and command not found
+
+		// COMMAND NOT FOUND
+		if (!commandFound) {
+			std::ofstream mjpeg_config_file_out(config_path);
+			if (!mjpeg_config_file_out.is_open()) {
+				std::cerr << "Error opening file: " << config_path << std::endl;
+				return;
+			}
+			// std::cout << "fileContent: " << fileContent.str() << std::endl;
+			std::cout << "Command not found in the file." << std::endl;
+			// Append the line.
+			mjpeg_config_file_out << command << "=" << args << "\n";
+			mjpeg_config_file_out.close();
+
+			// std::this_thread::sleep_for(std::chrono::seconds(10)); // Sleep for 1 second
+		}
+		// COMMAND FOUND
+		else {
+			LOG(2, "Command found in file:  " << command << "=" << args);
+			std::cout << fileContent.str() << std::endl;
+			// Edit the line.
+			std::ifstream mjpeg_config_file_in(config_path);
+			while (std::getline(mjpeg_config_file_in, line)) {
+				// Check if the line starts with the option
+				if (line.find(command) == 0) {
+					// Replace the line with the new value
+					line = command + "=" + args;
+					std::cout << "line: " << line << std::endl;
+					commandFound = true;
+				}
+			mjpeg_config_file_in.close();
+			std::ofstream mjpeg_config_file_out(config_path);
+			if (!mjpeg_config_file_out.is_open()) {
+				std::cerr << "Error opening file: " << config_path << std::endl;
+				return;
+			}
+			mjpeg_config_file_out << fileContent.str();
+			// mjpeg_config_file_out << line << std::endl;  // Write the line (modified or not) to the output file
+			mjpeg_config_file_out.close();
+			}
+			// std::this_thread::sleep_for(std::chrono::seconds(10)); // Sleep for 1 second
+		}
+	}
+
+	// void WriteOptionsToConfigFile()
+	// {
+
+	// }
+
+	std::filesystem::path config_path = "/etc/rpicam-mjpeg.txt";
 
 	void SetFifoRequest(FIFORequest request) { fifo_request_ = request; }
 	FIFORequest GetFifoRequest() const { return fifo_request_; }
