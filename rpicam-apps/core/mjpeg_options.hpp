@@ -41,7 +41,7 @@ struct MJPEGOptions : public VideoStillOptions
         options_.add_options()
         ("image-output,io",value<std::string>(&output_image)->default_value("/var/www/media/im_%i_%Y%m%d_%H%M%S.jpg"),
             "Set the output path for the MJPEG stream. Can be udp/tcp for network stream")
-        ("mjpeg-output,mo",value<std::string>(&output_preview)->default_value("/dev/shm/mjpeg/cam.jpg"),
+        ("preview-output,mo",value<std::string>(&output_preview)->default_value("/dev/shm/mjpeg/cam.jpg"),
             "Set the output path for the low resolution preview stream. Can be udp/tcp for network stream")
         ("video-output,vo",value<std::string>(&output_video)->default_value("/var/www/media/vi_%v_%Y%m%d_%H%M%S.mp4"),
             "Set the output path for the video stream. Can be udp/tcp for network stream")
@@ -69,6 +69,8 @@ struct MJPEGOptions : public VideoStillOptions
             "Sets the interval in microseconds for the named pipe to be read from")
         ("motion-pipe", value<std::string>(&motion_pipe)->default_value("/var/www/FIFO1"),
             "Sets the path to the named pipe for motion detection commands. \"/var/www/FIFO1\" is the default path")
+        ("ignore-etc-config", value<bool>(&ignore_etc_config)->default_value(false)->implicit_value(true),
+            "Ignore the /etc/rpicam-mjpeg configuration file used by RPi_Cam_Web_Interface. If this flag is not set, the configuration file will be used if it exists. The --config option will override this flag.")
         ;
     }
 
@@ -89,6 +91,7 @@ struct MJPEGOptions : public VideoStillOptions
     std::string control_file;
     unsigned int fifo_interval;
     std::string motion_pipe;
+    bool ignore_etc_config;
 
 
     /*
@@ -110,6 +113,11 @@ struct MJPEGOptions : public VideoStillOptions
             image_width = 640;
         if (!image_height)
             image_height = 360;
+        
+        // check if the file /etc/rpicam-mjpeg exists, and if so set config_file to this
+        std::ifstream ifs("/etc/rpicam-mjpeg");
+        if (ifs and config_file.empty() and !ignore_etc_config)
+            config_file = "/etc/rpicam-mjpeg";
 
         if (!VideoStillOptions::Parse(argc, argv))
             return false;
@@ -170,7 +178,7 @@ struct MJPEGOptions : public VideoStillOptions
         if (!output_image.empty())
             args.push_back("--image-output=" + output_image);
         if (!output_preview.empty())
-            args.push_back("--mjpeg-output=" + output_preview);
+            args.push_back("--preview-output=" + output_preview);
         if (!output_video.empty())
             args.push_back("--video-output=" + output_video);
         if (!media_path.empty())
