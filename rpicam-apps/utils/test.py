@@ -14,11 +14,13 @@
 import argparse
 from enum import Enum
 import fcntl
+import signal
 import json
 import os
 import os.path
 import subprocess
 import sys
+import time
 from timeit import default_timer as timer
 import v4l2
 import numpy as np
@@ -357,16 +359,16 @@ def test_jpeg(exe_dir, output_dir):
 
     # "isolation test". As above, but force IPA to run is "isolation" mode.
     # Disabled for now due to https://bugs.libcamera.org/show_bug.cgi?id=137
-    #print("    isolation test")
-    #os.environ['LIBCAMERA_IPA_FORCE_ISOLATION'] = 'true'
-    #retcode, time_taken = run_executable([executable, '-t', '1000', '-o', output_jpg],
-    #                                     logfile)
-    #os.environ.pop('LIBCAMERA_IPA_FORCE_ISOLATION')
-    #check_retcode(retcode, "test_jpeg: isolation test")
-    #check_time(time_taken, 1, 8, "test_jpeg: isolation test")
-    #check_size(output_jpg, 1024, "test_jpeg: isolation test")
+    print("    isolation test")
+    os.environ['LIBCAMERA_IPA_FORCE_ISOLATION'] = 'true'
+    retcode, time_taken = run_executable([executable, '-t', '1000', '-o', output_jpg],
+                                        logfile)
+    os.environ.pop('LIBCAMERA_IPA_FORCE_ISOLATION')
+    check_retcode(retcode, "test_jpeg: isolation test")
+    check_time(time_taken, 1, 8, "test_jpeg: isolation test")
+    check_size(output_jpg, 1024, "test_jpeg: isolation test")
     # For this one, we're actually going to peak inside the jpeg.
-    #check_jpeg(output_jpg, "test_jpeg: isolation test")
+    check_jpeg(output_jpg, "test_jpeg: isolation test")
 
     # "shutter test". See if we appear to get the shutter/gain we asked for.
     print("    shutter test")
@@ -633,21 +635,202 @@ def test_post_processing(exe_dir, output_dir, json_dir, postproc_dir):
 
     print("post-processing tests passed")
 
+def test_mjpeg(exe_dir, output_dir):
+    # Define the executable path for rpicam-mjpeg
+    executable = os.path.join(exe_dir, 'apps', 'rpicam-mjpeg')
+    output_mjpeg = os.path.join(output_dir, 'test_mjpeg_output.mjpeg')
+    logfile = os.path.join(output_dir, 'log.txt')
+
+    # Print diagnostic information
+    print("Testing", executable)
+    print("Output file will be:", output_mjpeg)
+
+    # Ensure the executable exists
+    check_exists(executable, 'test_mjpeg')
+
+    # Clean the output directory
+    clean_dir(output_dir)
+
+    # Run the rpicam-mjpeg command with a timeout of 2 seconds
+    print("Running rpicam-mjpeg for 2 seconds...")
+    args = ['sudo', executable,
+        "-t", "2000",  # Run for 2 seconds
+        "--image-width", "1280",
+        "--image-height", "720",
+        "--width", "1280",
+        "--height", "720",
+        "--lores-width", "640",
+        "--lores-height", "360",
+        "--preview-output", output_mjpeg
+    ]
+
+    # Execute the command and log output
+    retcode, time_taken = run_executable(args, logfile)
+
+    # Check if the command executed successfully
+    check_retcode(retcode, "test_mjpeg: execution")
+
+    # Check if the output MJPEG file was created
+    check_exists(output_mjpeg, "test_mjpeg: output file")
+
+    # Check if the output MJPEG file is non-empty
+    check_size(output_mjpeg, 1024, "test_mjpeg: output file size")
+
+    print("test_mjpeg passed: MJPEG capture successful.")
+
+def test_mjpeg_image_capture(exe_dir, output_dir):
+    executable = os.path.join(exe_dir, 'apps', 'rpicam-mjpeg')
+    output_jpg = os.path.join(output_dir, 'test_image_output.jpg')
+    logfile = os.path.join(output_dir, 'log.txt')
+
+    print("Testing rpicam-mjpeg image capture with valid options...")
+    check_exists(executable, 'test_mjpeg_image_capture')
+    clean_dir(output_dir)
+
+    # Valid options for image capture
+    args = [
+        'sudo', executable,
+        "-t", "2000",  # Run for 2 seconds
+        "--image-width", "1280",
+        "--image-height", "720",
+        "--image-output", output_jpg,  # Set the output file for the image
+        "--image-stream-type", "still",  # Use the "still" image stream
+        "--preview-output", output_jpg,  # For preview (can be changed based on requirements)
+        "--encoding", "jpg"  # Set encoding to jpg
+    ]
+
+    retcode, time_taken = run_executable(args, logfile)
+    check_retcode(retcode, "test_mjpeg_image_capture: execution")
+
+    # Check if the output image file was created
+    check_exists(output_jpg, "test_mjpeg_image_capture: output file")
+    check_size(output_jpg, 1024, "test_mjpeg_image_capture: output file size")
+
+    print("test_mjpeg_image_capture passed: Image capture successful.")
+
+def test_mjpeg_encodings(exe_dir, output_dir):
+    # Define the executable path for rpicam-mjpeg
+    executable = os.path.join(exe_dir, 'apps', 'rpicam-mjpeg')
+    logfile = os.path.join(output_dir, 'log.txt')
+    
+    # Define different encodings to test
+    encodings = ['rgb24', 'rgb48', 'bmp', 'png']
+
+    print("Testing", executable, "with different encodings")
+
+    # Ensure the executable exists
+    check_exists(executable, 'test_mjpeg_encodings')
+
+    # Clean the output directory
+    clean_dir(output_dir)
+
+    # Loop through each encoding and run the test
+    for encoding in encodings:
+        output_file = os.path.join(output_dir, f'test_mjpeg_output_{encoding}.jpg')
+        print(f"Running rpicam-mjpeg with encoding {encoding} for 2 seconds...")
+
+        # Run the rpicam-mjpeg command for 2 seconds with the specific encoding
+        args = ['sudo', executable,
+            "-t", "2000",  # Run for 2 seconds
+            "--image-width", "1280",
+            "--image-height", "720",
+            "--width", "1280",
+            "--height", "720",
+            "--lores-width", "640",
+            "--lores-height", "360",
+            "--preview-output", output_file,
+            "--encoding", encoding  # Add the encoding flag here
+        ]
+
+        # Execute the command and log output
+        retcode, time_taken = run_executable(args, logfile)
+
+        # Check if the command executed successfully
+        check_retcode(retcode, f"test_mjpeg_encodings: encoding {encoding} execution")
+
+        # Check if the output file was created
+        check_exists(output_file, f"test_mjpeg_encodings: encoding {encoding} output file")
+
+        # Check if the output file is non-empty
+        check_size(output_file, 1024, f"test_mjpeg_encodings: encoding {encoding} output file size")
+
+        print(f"test_mjpeg_encodings passed: MJPEG capture with encoding {encoding} successful.")
+    
+    print("All encoding tests passed for rpicam-mjpeg.")
+
+import subprocess
+
+def test_mjpeg_default_output(exe_dir, output_dir):
+    # Define the executable path for rpicam-mjpeg
+    executable = os.path.join(exe_dir, 'apps', 'rpicam-mjpeg')
+    logfile = os.path.join(output_dir, 'log.txt')
+
+    # Default output path for the MJPEG capture
+    default_output_jpg = '/dev/shm/mjpeg/cam.jpg'
+
+    # Print diagnostic information
+    print("Testing", executable)
+    print(f"Default output file will be: {default_output_jpg}")
+
+    # Ensure the executable exists
+    check_exists(executable, 'test_mjpeg_default_output')
+
+    # Clean the output directory
+    clean_dir(output_dir)
+
+    # Run the rpicam-mjpeg command with a timeout of 2 seconds
+    print("Running rpicam-mjpeg for 2 seconds...")
+    args = ['sudo', executable,
+            "-t", "2000",  # Run for 2 seconds
+            "--image-width", "1280",
+            "--image-height", "720",
+            "--width", "1280",
+            "--height", "720",
+            "--lores-width", "640",
+            "--lores-height", "360"
+    ]
+
+    # Execute the command and log output
+    retcode, time_taken = run_executable(args, logfile)
+
+    # Check if the command executed successfully
+    check_retcode(retcode, "test_mjpeg_default_output: execution")
+
+    # Check if cam.jpg exists after the program finishes
+    check_exists(default_output_jpg, "test_mjpeg_default_output: cam.jpg")
+
+    # Check if cam.jpg is non-empty
+    check_size(default_output_jpg, 1024, "test_mjpeg_default_output: cam.jpg file size")
+
+    print("test_mjpeg_default_output passed: MJPEG capture successful.")
+
+
+
+
 
 def test_all(apps, exe_dir, output_dir, json_dir, postproc_dir):
     try:
         if 'hello' in apps:
             test_hello(exe_dir, output_dir)
-        if 'still' in apps:
-            test_still(exe_dir, output_dir)
-        if 'jpeg' in apps:
-            test_jpeg(exe_dir, output_dir)
-        if 'vid' in apps:
-            test_vid(exe_dir, output_dir)
-        if 'raw' in apps:
-            test_raw(exe_dir, output_dir)
-        if 'post-processing' in apps:
-            test_post_processing(exe_dir, output_dir, json_dir, postproc_dir)
+        else:
+            print("not there!!!!!!!!!!!!!!!!!!")
+        # if 'still' in apps:
+        #     test_still(exe_dir, output_dir)
+        # if 'jpeg' in apps:
+        #     test_jpeg(exe_dir, output_dir)
+        # if 'vid' in apps:
+        #     test_vid(exe_dir, output_dir)
+        # if 'raw' in apps:
+        #     test_raw(exe_dir, output_dir)
+        # if 'post-processing' in apps:
+        #     test_post_processing(exe_dir, output_dir, json_dir, postproc_dir)
+        if 'mjpeg' in apps:  # Add this for rpicam-mjpeg testing
+            test_mjpeg(exe_dir, output_dir)
+            test_mjpeg_image_capture(exe_dir, output_dir)
+            test_mjpeg_encodings(exe_dir, output_dir)
+            test_mjpeg_default_output(exe_dir, output_dir)
+        else:
+            print("not there!!!!!!!!!!!!!!!!!!")
 
         print("All tests passed")
         clean_dir(output_dir)
