@@ -26,7 +26,6 @@ import numpy as np
 
 def get_platform():
     platform = 'vc4'
-    
     try:
         for num in range(5):
             device = '/dev/video' + str(num)
@@ -42,7 +41,7 @@ def get_platform():
                         break
     except Exception:
         pass
-    
+
     return platform
 
 
@@ -99,11 +98,8 @@ def check_jpeg(file, preamble):
 
 
 def test_hello(exe_dir, output_dir):
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-hello')
+    executable = os.path.join(exe_dir, 'rpicam-hello')
     logfile = os.path.join(output_dir, 'log.txt')
-    print("Current working directory:", os.getcwd())
-    print("executable directory set to:", exe_dir)
-    print("Looking for executable file at:", executable)
     print("Testing", executable)
     check_exists(executable, 'test_hello')
     clean_dir(output_dir)
@@ -204,7 +200,7 @@ def check_metadata_txt(file, preamble):
 
 def test_still(exe_dir, output_dir):
     platform = get_platform()
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-still')
+    executable = os.path.join(exe_dir, 'rpicam-still')
     output_jpg = os.path.join(output_dir, 'test.jpg')
     output_png = os.path.join(output_dir, 'test.png')
     output_bmp = os.path.join(output_dir, 'test.bmp')
@@ -231,14 +227,12 @@ def test_still(exe_dir, output_dir):
     check_time(time_taken, 1, 10, "test_still: no-raw test")
     check_size(output_jpg, 1024, "test_still: no-raw test")
 
-    
     # "zsl test". As above, but with zsl enabled
     print("    zsl test")
     retcode, time_taken = run_executable([executable, '-t', '1000', '-o', output_jpg, '--zsl'], logfile)
     check_retcode(retcode, "test_still: zsl test")
     check_time(time_taken, 1, 10, "test_still: zsl test")
     check_size(output_jpg, 1024, "test_still: zsl test")
-    
 
     # "immediate test". Immediate capture test
     print("    immediate test")
@@ -335,9 +329,9 @@ def check_jpeg_shutter(file, shutter_string, iso_string, preamble):
     elif iso_string not in iso_line[0]:
         raise(preamble + " - bad ISO value")
 
-'''
+
 def test_jpeg(exe_dir, output_dir):
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-jpeg')
+    executable = os.path.join(exe_dir, 'rpicam-jpeg')
     output_jpg = os.path.join(output_dir, 'test.jpg')
     output_shutter = os.path.join(output_dir, 'shutter.jpg')
     logfile = os.path.join(output_dir, 'log.txt')
@@ -379,7 +373,7 @@ def test_jpeg(exe_dir, output_dir):
     check_jpeg_shutter(output_shutter, '1/50', '200', "test_jpeg: shutter test")
 
     print("rpicam-jpeg tests passed")
-'''
+
 
 def check_timestamps(file, preamble):
     try:
@@ -402,7 +396,7 @@ def check_timestamps(file, preamble):
 
 def test_vid(exe_dir, output_dir):
     platform = get_platform()
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-vid')
+    executable = os.path.join(exe_dir, 'rpicam-vid')
     output_h264 = os.path.join(output_dir, 'test.h264')
     output_mkv = os.path.join(output_dir, 'test.mkv')
     output_mp4 = os.path.join(output_dir, 'test.mp4')
@@ -531,7 +525,7 @@ def test_vid(exe_dir, output_dir):
 
 
 def test_raw(exe_dir, output_dir):
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-raw')
+    executable = os.path.join(exe_dir, 'rpicam-raw')
     output_raw = os.path.join(output_dir, 'test.raw')
     logfile = os.path.join(output_dir, 'log.txt')
     print("Testing", executable)
@@ -556,14 +550,9 @@ def test_post_processing(exe_dir, output_dir, json_dir, postproc_dir):
 
     # "negate test". See if negate stage appears to run.
     print("    negate test")
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-hello')
+    executable = os.path.join(exe_dir, 'rpicam-hello')
     check_exists(executable, 'post-processing')
-    # json_file = os.path.join('rpicam-apps/assets', 'negate.json')
     json_file = os.path.join(json_dir, 'negate.json')
-    print("Current working directory:", os.getcwd())
-    print("JSON directory set to:", json_dir)
-    print("Looking for JSON file at:", json_file)
-    # json_file = os.path.join(json_dir, 'rpicam-apps/assets', 'negate.json')
     check_exists(json_file, 'post-processing')
     args = [executable, '-t', '2000', '--post-process-file', json_file]
     if postproc_dir:
@@ -574,7 +563,7 @@ def test_post_processing(exe_dir, output_dir, json_dir, postproc_dir):
 
     # "hdr test". Take an HDR capture.
     print("    hdr test")
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-still')
+    executable = os.path.join(exe_dir, 'rpicam-still')
     check_exists(executable, 'post-processing')
     output_hdr = os.path.join(output_dir, 'hdr.jpg')
     json_file = os.path.join(json_dir, 'hdr.json')
@@ -589,7 +578,7 @@ def test_post_processing(exe_dir, output_dir, json_dir, postproc_dir):
 
     # "sobel test". Try to run a stage that uses OpenCV.
     print("    sobel test")
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-hello')
+    executable = os.path.join(exe_dir, 'rpicam-hello')
     check_exists(executable, 'post-processing')
     json_file = os.path.join(json_dir, 'sobel_cv.json')
     check_exists(json_file, 'post-processing')
@@ -604,7 +593,7 @@ def test_post_processing(exe_dir, output_dir, json_dir, postproc_dir):
 
     # "detect test". Try to run a stage that uses TFLite.
     print("    detect test")
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-hello')
+    executable = os.path.join(exe_dir, 'rpicam-hello')
     check_exists(executable, 'post-processing')
     json_file = os.path.join(json_dir, 'object_detect_tf.json')
     check_exists(json_file, 'post-processing')
@@ -638,14 +627,14 @@ def test_all(apps, exe_dir, output_dir, json_dir, postproc_dir):
     try:
         if 'hello' in apps:
             test_hello(exe_dir, output_dir)
-        # if 'still' in apps:
-        #     test_still(exe_dir, output_dir)
-        #if 'jpeg' in apps:
-            #test_jpeg(exe_dir, output_dir)
-        # if 'vid' in apps:
-        #     test_vid(exe_dir, output_dir)
-        # if 'raw' in apps:
-        #     test_raw(exe_dir, output_dir)
+        if 'still' in apps:
+            test_still(exe_dir, output_dir)
+        if 'jpeg' in apps:
+            test_jpeg(exe_dir, output_dir)
+        if 'vid' in apps:
+            test_vid(exe_dir, output_dir)
+        if 'raw' in apps:
+            test_raw(exe_dir, output_dir)
         if 'post-processing' in apps:
             test_post_processing(exe_dir, output_dir, json_dir, postproc_dir)
 
@@ -659,29 +648,19 @@ def test_all(apps, exe_dir, output_dir, json_dir, postproc_dir):
     return
 
 
-
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='rpicam-apps automated tests')
+    parser = argparse.ArgumentParser(description = 'rpicam-apps automated tests')
     parser.add_argument('--apps', '-a', action='store', default='hello,still,vid,jpeg,raw,post-processing',
                         help='List of apps to test')
-    parser.add_argument('--exe-dir', '-d', action='store', default='rpicam-apps/build',
+    parser.add_argument('--exe-dir', '-d', action='store', default='build',
                         help='Directory name for executables to test')
     parser.add_argument('--output-dir', '-o', action='store', default='.',
                         help='Directory name for output files')
-    parser.add_argument('--json-dir', '-j', action='store', default='./assets/',
+    parser.add_argument('--json-dir', '-j', action='store', default='.',
                         help='Directory name for JSON post-processing files')
     parser.add_argument('--post-process-libs', '-p', action='store', default=None,
                         help='Directory name custom post-processing libraries')
-
     args = parser.parse_args()
-    apps = args.apps.split(',')
-    exe_dir = args.exe_dir.rstrip('/')
-    output_dir = args.output_dir
-    json_dir = args.json_dir
-    postproc_dir = args.post_process_libs
-
-    print("Exe_dir:", exe_dir, "Output_dir:", output_dir, "Json_dir:", json_dir, "Postproc_dir:", postproc_dir)
-
     apps = args.apps.split(',')
     exe_dir = args.exe_dir.rstrip('/')
     output_dir = args.output_dir
