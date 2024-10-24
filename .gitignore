@@ -321,3 +321,7 @@ $RECYCLE.BIN/
 **/build/
 
 **/.vscode/
+
+actions-runner/
+rpicam-apps/test_output/
+test_output/
