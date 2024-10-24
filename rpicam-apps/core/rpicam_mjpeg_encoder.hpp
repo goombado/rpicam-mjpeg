@@ -547,13 +547,13 @@ public:
 				std::cerr << "Error opening file: " << config_path << std::endl;
 				return;
 			}
-			std::cout << "fileContent: " << fileContent.str() << std::endl;
+			// std::cout << "fileContent: " << fileContent.str() << std::endl;
 			std::cout << "Command not found in the file." << std::endl;
 			// Append the line.
 			mjpeg_config_file_out << command << "=" << args << "\n";
 			mjpeg_config_file_out.close();
 
-			std::this_thread::sleep_for(std::chrono::seconds(10)); // Sleep for 1 second
+			// std::this_thread::sleep_for(std::chrono::seconds(10)); // Sleep for 1 second
 		}
 		// COMMAND FOUND
 		else {
@@ -579,7 +579,7 @@ public:
 			// mjpeg_config_file_out << line << std::endl;  // Write the line (modified or not) to the output file
 			mjpeg_config_file_out.close();
 			}
-			std::this_thread::sleep_for(std::chrono::seconds(10)); // Sleep for 1 second
+			// std::this_thread::sleep_for(std::chrono::seconds(10)); // Sleep for 1 second
 		}
 	}
 
