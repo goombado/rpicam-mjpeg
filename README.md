@@ -46,12 +46,6 @@ Our Documentation in Confluence can be found at [https://comp3888-m12-02-2024.at
      cd p05c-rpi-gpu
      ```
 
-2.   Change your git name and set your email to your university email.
-
-     ```sh
-     git config user.name "Full Name SID"
-     git config user.email "unikey@uni.sydney.edu.au"
-     ```
 
 ## Making changes
 
@@ -117,8 +111,7 @@ ssh <username>@<IP address>
 ```
 where the username is the username that you setup when you flashed your OS, and IP address is the address of the Raspberry Pi. Then you will be prompted to enter your password and then boom, you have successfully connected to the Pi remotedly. You should see <username>@<RaspberryPi> on the left of your terminal lines.
 
-### USES
-The above gives you a terminal so you can run code, however if you want to write code you can do the following:
+### VS Code
 
 1. On VS code, install the extension called remote development
 2. Bring up the command palette and search "Remote SSH: Connect current window to host"
@@ -128,8 +121,6 @@ ssh <username>@<IP address>
 ```
 4. It'll prompt you where to store the config file, just continue here doesn't really matter where you're storing it. Then it'll prompt you to entire your password, and if successful a new VS code window will open and now you can code on the Raspberry pi remotely.
 
-### Side notes
-For our purposes, we want to do something called X forwarding, on your terminal when you ssh, add the -X or -Y flag (will look into the differences), and when you run for example rpicam-hello you want to add the "--qt-preview" flag.
 
 ## Build Instructions
 
@@ -194,130 +185,3 @@ cd rpicam-apps
 make
 ```
 <br>
-
-## Code Review Instructions
-All of our code requires ```libcamera``` to be built, so follow the above instructions to ensure you have the latest libcamera built in your environment.
-### Two Preview Windows:
-
-<br>
-
-This version of the program was a proof-of-concept task given to us by Cian. We were to see if we could have two preview windows displaying at once. We were partially successful, as detailed below.
-
-In order to navigate to the intended branch and directory to test  this code, please follow these instructions:
-
-```sh
-git checkout patrick-preview-test
-cd rpicam-apps
-make
-```
-
-then, on a Raspi environment (window won't display through an SSH), run
-
-```sh
-rpicam-patrick --verbose
-```
-
-This will open two preview windows, and feed both with the camera input. However, the program will crash after displaying only one frame. I have added a 2 second sleep statement so that the preview windows with the single frame will be visible.
-
-<br><br>
-
-### Image Capture Speedup [rpicam-still]:
-
-<br>
-
-*Note: this was the **initial** attempt.*
-
-These edits were an initial alternative approach to the task of improving the speed of taking a Raspberry Pi photo, modifying the rpicam_still files instead of the rpicam_jpeg files.
-
-The modifications resulted in a time decrease from around 10 seconds to around 5 seconds, which is not as efficient as the result of the rpicam_jpeg changes that the team decided to pursue further. If you still want to test this out this alternative approach, complete the following instructions:
-
-```sh
-git checkout eleanor_photo_edits
-cd rpicam-apps
-make
-```
-
-Type this command into your Rpi terminal to take a photo, and the time it took to take the photo should be printed in the terminal:
-
-```sh
-libcamera-still --width 3280 --height 2464 -o test.jpg -n -t 1
-```
-
-<br><br>
-
-### Image Capture Speedup [rpicam-jpeg]:
-
-<br>
-
-*Note: this is the faster version.*
-
-These edits pertain to the rpicam_jpeg.cpp file, and by restructuring the camera configuration and removing redundant code, image capture has been reduced from roughly 5.5 seconds to **0.6** seconds.
-
-In order to navigate to the intended branch and directory to test this code, please follow these instructions:
-
-```sh
-git checkout alistair_branch
-sudo apt install python3-matplotlib python3-numpy
-cd rpicam-apps
-make
-```
-
-You should now be able to execute image capture commands with significantly reduced execution time.
-
-For a basic image capture:
-
-```sh
-libcamera-jpeg -o test.jpg
-```
-
-For performance testing of image capture, navigate to the `tests/scripts` directory and then execute benchmark_libcamera.sh by the following:
-
-```sh
-cd tests/scripts
-chmod +x benchmark_libcamera.sh
-./benchmark_libcamera.sh
-```
-
-This will run the image capture command 20 times, outputting the execution time in milliseconds to ```tests/data/timings.txt``` in real-time. You can compare this with the old_timings.txt in /data, which is from the same testcase run on the old version of rpicam_jpeg to see the difference (90% reduction).
-
-To see a benchmark plot of the two versions of rpicam_jpeg, run analyse_timings.py:
-
-```sh
-python analyse_timings.py
-```
-This testcase assesses the performance of the new rpicam_jpeg, ensuring a consistent reduction in execution time. The produced plot is located in ```tests/data```. 
-
-<br>
-
-### External App [danBranch]:
-The following two branches are dedicated to creating a brand new ```libcamera```-based app altogether. Both will still show errors when being run, but correctly compile.
-
-
-<br>
-
-```sh
-git checkout danBranch
-cd dancam_apps/src
-g++ -o dancam_still dancam_still.cpp -I/usr/local/include/libcamera -lcamera -lcamera-base
-./dancam_still
-```
-
-The next steps in this implementation are as follows:
-1. Complete a still image capture
-2. Change the program such that instead of only capturing one frame, it continuously capture to form a video, which will become the preview window as required
-3. Using the different captured frames, do motion detection (Possibly using openCV or maybe other libraries)
-4. Combine the three functionality into one CLI app, which will then can be easily ported to web interface
-
-<br>
-
-### External App [andrei-new-app]:
-This app is meant to be a proof of concept of libcamera's ability to be configured for multiple custom streams. There is currently no preview or recording, but printed to the command line is configuration similar to that of ```rpicam-apps```. Due to specificities in individual cameras, there will likely be error messages that appear. However the main thing is to show that libcamera does inherently support multiple "simultaneous" streams, as this app shows at a rudimentary level.
-<br>
-
-```sh
-git checkout andrei-new-app
-cd andrei-libcamera
-make
-cd build
-./main
-```
