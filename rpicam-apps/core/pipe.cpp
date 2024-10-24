@@ -82,7 +82,7 @@ Pipe::Pipe(const std::string &pipeName)
 Pipe::~Pipe() {
     std::cout << "Pipe destructor called." << std::endl;
     closePipe();
-    removePipe();
+    // removePipe();
 }
 
 bool Pipe::createPipe() {
