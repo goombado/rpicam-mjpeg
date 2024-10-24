@@ -198,27 +198,32 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
     switch (flag)
     {
         case IO: // image-output
+            app->WriteOptionToConfigFile(command_raw, arg);
             app->SetFifoRequest(FIFORequest::UNKNOWN);
-            app->WriteOptionToConfigFile("--nopreview", "");
             break;
 
         case MO: // mjpeg-output
+            app->WriteOptionToConfigFile(command_raw, arg);
             app->SetFifoRequest(FIFORequest::UNKNOWN);
             break;
 
         case VO: // video-output
+            app->WriteOptionToConfigFile(command_raw, arg);
             app->SetFifoRequest(FIFORequest::UNKNOWN);
             break;
 
         case MP: // media-path
+            app->WriteOptionToConfigFile(command_raw, arg);
             app->SetFifoRequest(FIFORequest::UNKNOWN);
             break;
 
         case IC: // image-count
+            app->WriteOptionToConfigFile(command_raw, arg);
             app->SetFifoRequest(FIFORequest::UNKNOWN);
             break;
 
         case VC: // video-count
+            app->WriteOptionToConfigFile(command_raw, arg);
             app->SetFifoRequest(FIFORequest::UNKNOWN);
             break; 
 

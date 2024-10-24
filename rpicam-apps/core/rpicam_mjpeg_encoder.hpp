@@ -11,6 +11,7 @@
 #include <string>
 #include <filesystem>
 #include <chrono>
+#include <fstream>
 
 #include <dirent.h>
 #include <time.h>
@@ -503,6 +504,7 @@ public:
 			LOG(2, "Created Config File at: " << config_path);
 			return true;
 		}
+		LOG(2, "File already exists!");
 		return true;
 	}
 
@@ -523,6 +525,7 @@ public:
 		std::string line;
 		std::stringstream fileContent;
 		bool commandFound = false;
+
 		// check if the command is already in the file
 		while (std::getline(mjpeg_config_file, line)) {
 
@@ -533,16 +536,51 @@ public:
 			fileContent << line << "\n";
 		}
 		mjpeg_config_file.close();
+
+
+		// Split into two cases: command found and command not found
+
+		// COMMAND NOT FOUND
 		if (!commandFound) {
+			std::ofstream mjpeg_config_file_out(config_path);
+			if (!mjpeg_config_file_out.is_open()) {
+				std::cerr << "Error opening file: " << config_path << std::endl;
+				return;
+			}
+			std::cout << "fileContent: " << fileContent.str() << std::endl;
 			std::cout << "Command not found in the file." << std::endl;
 			// Append the line.
+			mjpeg_config_file_out << command << "=" << args << "\n";
+			mjpeg_config_file_out.close();
+
 			std::this_thread::sleep_for(std::chrono::seconds(10)); // Sleep for 1 second
 		}
+		// COMMAND FOUND
 		else {
 			LOG(2, "Command found in file:  " << command << "=" << args);
+			std::cout << fileContent.str() << std::endl;
 			// Edit the line.
+			std::ifstream mjpeg_config_file_in(config_path);
+			while (std::getline(mjpeg_config_file_in, line)) {
+				// Check if the line starts with the option
+				if (line.find(command) == 0) {
+					// Replace the line with the new value
+					line = command + "=" + args;
+					std::cout << "line: " << line << std::endl;
+					commandFound = true;
+				}
+			mjpeg_config_file_in.close();
+			std::ofstream mjpeg_config_file_out(config_path);
+			if (!mjpeg_config_file_out.is_open()) {
+				std::cerr << "Error opening file: " << config_path << std::endl;
+				return;
+			}
+			mjpeg_config_file_out << fileContent.str();
+			// mjpeg_config_file_out << line << std::endl;  // Write the line (modified or not) to the output file
+			mjpeg_config_file_out.close();
+			}
+			std::this_thread::sleep_for(std::chrono::seconds(10)); // Sleep for 1 second
 		}
-
 	}
 
 	// void WriteOptionsToConfigFile()
