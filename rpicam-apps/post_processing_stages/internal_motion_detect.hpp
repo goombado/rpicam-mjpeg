@@ -10,13 +10,20 @@
 
 #include "post_processing_stages/post_processing_stage.hpp"
 
-#include "opencv2/opencv.hpp"
+#include "core/pipe.hpp"
+#include "core/rpicam_mjpeg_encoder.hpp"
+
+#include <opencv2/opencv.hpp>
 
 using Stream = libcamera::Stream;
 
 class internalMotionDetectStage : public PostProcessingStage{
     public:
-        internalMotionDetectStage(RPiCamApp *app) : PostProcessingStage(app) {}
+        internalMotionDetectStage(RPiCamApp *app) : PostProcessingStage(app) {
+            std::string motion_pipe_name = ((RPiCamMJPEGEncoder*) app)->GetOptions()->motion_pipe;
+            motion_pipe_ = std::make_unique<Pipe>(motion_pipe_name);
+            motion_pipe_->createPipe();
+        }
 
         // returns the name of the stage
         char const *Name() const override;
@@ -51,9 +58,9 @@ class internalMotionDetectStage : public PostProcessingStage{
         int motion_initframes_; // Number of frames to wait at the start before checking for motion
         int motion_startframes_; // If motion is detected for this amount of frames consectutively, then it is considered motion
         int motion_stopframes_; // Once motion is no longer detected for this amount of frames, then we stop the motion event
-        std::string motion_pipe_; // Path to the named pipe to write motion events to
-        int motion_file_; 
-
+        // std::string motion_pipe_; // Path to the named pipe to write motion events to
+        int motion_file_; // Turn on vector capture to file
+        std::string motion_file_path_; // Path to the file to write motion events to
     // parameters needed for motion detection 
         Stream *stream_;
         StreamInfo low_res_info_;
@@ -63,4 +70,7 @@ class internalMotionDetectStage : public PostProcessingStage{
         int motion_frame_counter;
         int no_motion_counter;
         cv::Mat prev_frame;
+
+        bool motion_detected = false;
+        std::unique_ptr<Pipe> motion_pipe_;
 };

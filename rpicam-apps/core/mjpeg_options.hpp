@@ -69,8 +69,6 @@ struct MJPEGOptions : public VideoStillOptions
             "Sets the interval in microseconds for the named pipe to be read from")
         ("motion-pipe", value<std::string>(&motion_pipe)->default_value("/var/www/FIFO1"),
             "Sets the path to the named pipe for motion detection commands. \"/var/www/FIFO1\" is the default path")
-        ("demo", value<bool>(&demo)->default_value(false)->implicit_value(true),
-            "Run rpicam-mjpeg in demo mode")
         ;
     }
 
@@ -91,7 +89,6 @@ struct MJPEGOptions : public VideoStillOptions
     std::string control_file;
     unsigned int fifo_interval;
     std::string motion_pipe;
-    bool demo;
 
 
     /*
@@ -104,6 +101,16 @@ struct MJPEGOptions : public VideoStillOptions
 
     virtual bool Parse(int argc, char *argv[]) override
     {
+        if (!lores_width)
+            lores_width = 640;
+        if (!lores_height)
+            lores_height = 360;
+        
+        if (!image_width)
+            image_width = 640;
+        if (!image_height)
+            image_height = 360;
+
         if (!VideoStillOptions::Parse(argc, argv))
             return false;
 
@@ -135,7 +142,24 @@ struct MJPEGOptions : public VideoStillOptions
             std::cerr << "Invalid FIFO interval" << std::endl;
             return false;
         }
+
+        bool timeout_set = false;
+        for (int i = 1; i < argc; ++i)
+        {
+            if (std::string(argv[i]) == "--timeout" || std::string(argv[i]) == "-t")
+            {
+            timeout_set = true;
+            break;
+            }
+        }
+
+        if (!timeout_set)
+        {
+            timeout.set("0");
+        }
         
+        nopreview = true;
+
         return true;
     }
 
@@ -173,8 +197,6 @@ struct MJPEGOptions : public VideoStillOptions
             args.push_back("--fifo-interval=" + std::to_string(fifo_interval));
         if (!motion_pipe.empty())
             args.push_back("--motion-pipe=" + motion_pipe);
-        if (demo)
-            args.push_back("--demo");
         
         return;
     }
