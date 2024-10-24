@@ -335,7 +335,7 @@ def check_jpeg_shutter(file, shutter_string, iso_string, preamble):
     elif iso_string not in iso_line[0]:
         raise(preamble + " - bad ISO value")
 
-'''
+
 def test_jpeg(exe_dir, output_dir):
     executable = os.path.join(exe_dir, 'apps', 'rpicam-jpeg')
     output_jpg = os.path.join(output_dir, 'test.jpg')
@@ -379,7 +379,7 @@ def test_jpeg(exe_dir, output_dir):
     check_jpeg_shutter(output_shutter, '1/50', '200', "test_jpeg: shutter test")
 
     print("rpicam-jpeg tests passed")
-'''
+
 
 def check_timestamps(file, preamble):
     try:
@@ -638,14 +638,14 @@ def test_all(apps, exe_dir, output_dir, json_dir, postproc_dir):
     try:
         if 'hello' in apps:
             test_hello(exe_dir, output_dir)
-        # if 'still' in apps:
-        #     test_still(exe_dir, output_dir)
-        #if 'jpeg' in apps:
-            #test_jpeg(exe_dir, output_dir)
-        # if 'vid' in apps:
-        #     test_vid(exe_dir, output_dir)
-        # if 'raw' in apps:
-        #     test_raw(exe_dir, output_dir)
+        if 'still' in apps:
+            test_still(exe_dir, output_dir)
+        if 'jpeg' in apps:
+            test_jpeg(exe_dir, output_dir)
+        if 'vid' in apps:
+            test_vid(exe_dir, output_dir)
+        if 'raw' in apps:
+            test_raw(exe_dir, output_dir)
         if 'post-processing' in apps:
             test_post_processing(exe_dir, output_dir, json_dir, postproc_dir)
 
