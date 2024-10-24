@@ -19,7 +19,6 @@ install:
 test:
 	# Run the Python tests located in rpicam-apps/utils/
 	mkdir -p test_output
-	# python3 utils/test.py --apps mjpeg --exe-dir ./build/ --output-dir ./test_output
 
 	python3 utils/test.py --exe-dir ./build/ --output-dir ./test_output --json-dir ./assets/
 

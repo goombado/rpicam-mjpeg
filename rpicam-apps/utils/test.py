@@ -809,28 +809,29 @@ def test_mjpeg_default_output(exe_dir, output_dir):
 
 
 def test_all(apps, exe_dir, output_dir, json_dir, postproc_dir):
+    print("Apps to be tested:", apps)  # Debug print
     try:
         if 'hello' in apps:
             test_hello(exe_dir, output_dir)
         else:
-            print("not there!!!!!!!!!!!!!!!!!!")
-        # if 'still' in apps:
-        #     test_still(exe_dir, output_dir)
-        # if 'jpeg' in apps:
-        #     test_jpeg(exe_dir, output_dir)
-        # if 'vid' in apps:
-        #     test_vid(exe_dir, output_dir)
-        # if 'raw' in apps:
-        #     test_raw(exe_dir, output_dir)
-        # if 'post-processing' in apps:
-        #     test_post_processing(exe_dir, output_dir, json_dir, postproc_dir)
+            print("hello not there")
+        if 'still' in apps:
+            test_still(exe_dir, output_dir)
+        if 'jpeg' in apps:
+            test_jpeg(exe_dir, output_dir)
+        if 'vid' in apps:
+            test_vid(exe_dir, output_dir)
+        if 'raw' in apps:
+            test_raw(exe_dir, output_dir)
+        if 'post-processing' in apps:
+            test_post_processing(exe_dir, output_dir, json_dir, postproc_dir)
         if 'mjpeg' in apps:  # Add this for rpicam-mjpeg testing
             test_mjpeg(exe_dir, output_dir)
             test_mjpeg_image_capture(exe_dir, output_dir)
             test_mjpeg_encodings(exe_dir, output_dir)
             test_mjpeg_default_output(exe_dir, output_dir)
         else:
-            print("not there!!!!!!!!!!!!!!!!!!")
+            print("mjpeg not there")
 
         print("All tests passed")
         clean_dir(output_dir)
@@ -845,8 +846,8 @@ def test_all(apps, exe_dir, output_dir, json_dir, postproc_dir):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='rpicam-apps automated tests')
-    parser.add_argument('--apps', '-a', action='store', default='hello,still,vid,jpeg,raw,post-processing',
-                        help='List of apps to test')
+    parser.add_argument('--apps', '-a', action='store', default='hello,still,vid,jpeg,raw,post-processing,mjpeg',
+                    help='List of apps to test')
     parser.add_argument('--exe-dir', '-d', action='store', default='rpicam-apps/build',
                         help='Directory name for executables to test')
     parser.add_argument('--output-dir', '-o', action='store', default='.',
