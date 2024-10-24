@@ -14,3 +14,6 @@ compile:
 install:
 	sudo meson install -C build
 	sudo ldconfig
+
+web:
+	cp build/apps/rpicam-mjpeg ~/repos/RPi_Cam_Web_Interface/bin

@@ -110,13 +110,13 @@ class ImageSaver {
                     dng_filename += ".dng";
                     
                 dng_save(mem, info, payload->metadata, dng_filename, camera_model_, still_options);
+                delete still_options;
                 return;
             }
 
 
             if (still_options->encoding == "jpg")
             {
-                // still_options->exif.clear();
                 jpeg_save(mem, info, payload->metadata, filename, camera_model_, still_options);
             }
             else if (still_options->encoding == "png")
@@ -127,6 +127,7 @@ class ImageSaver {
                 yuv_save(mem, info, filename, still_options);
             std::cout << "Image saved at " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count() << std::endl;
             LOG(2, "Saved image " << info.width << " x " << info.height << " to file " << filename);
+            delete still_options;
         }
 
         static void run_command(std::string const &command)

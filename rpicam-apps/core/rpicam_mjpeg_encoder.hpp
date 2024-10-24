@@ -6,9 +6,12 @@
  */
 
 #pragma once
+#include "core/pipe.hpp"
 
 #include <string>
 #include <filesystem>
+#include <chrono>
+#include <fstream>
 
 #include <dirent.h>
 #include <time.h>
@@ -29,6 +32,18 @@
 
 typedef std::function<void(void *, size_t, int64_t, bool)> EncodeOutputReadyCallback;
 typedef std::function<void(libcamera::ControlList &)> MetadataReadyCallback;
+
+enum FIFORequest
+{
+	NONE,
+	STOP,
+	RESTART,
+	START_VIDEO,
+	STOP_VIDEO,
+	CAPTURE_IMAGE,
+	TIMELAPSE,
+	UNKNOWN
+};
 
 class RPiCamMJPEGEncoder : public RPiCamApp
 {
@@ -67,8 +82,12 @@ public:
 			configuration_->at(0).bufferCount = options->buffer_count;
 		if (options->width)
 			configuration_->at(0).size.width = options->width;
+		else
+			configuration_->at(0).size.width = 640;
 		if (options->height)
 			configuration_->at(0).size.height = options->height;
+		else
+			configuration_->at(0).size.height = 360;
 			
 		configuration_->at(0).colorSpace = libcamera::ColorSpace::Sycc;
 		configuration_->orientation = libcamera::Orientation::Rotate0 * options->transform;
@@ -99,6 +118,12 @@ public:
 		configuration_ = camera_->generateConfiguration(stream_roles);
 		if (!configuration_)
 			throw std::runtime_error("failed to generate RAW still configuration");
+
+		if (!options->image_width || !options->image_height)
+		{
+			options->image_width = 640;
+			options->image_height = 360;
+		}
 
 		options->image_mode.update(Size(options->image_width, options->image_height), options->framerate);
 		options->image_mode = selectMode(options->image_mode);
@@ -146,8 +171,12 @@ public:
 			cfg.bufferCount = options->buffer_count;
 		if (options->width)
 			cfg.size.width = options->width;
+		else
+			cfg.size.width = 640;
 		if (options->height)
 			cfg.size.height = options->height;
+		else
+			cfg.size.height = 360;
 
 		// VideoRecording stream should be in Rec709 color space
 		if (cfg.size.width >= 1280 || cfg.size.height >= 720)
@@ -160,6 +189,12 @@ public:
 
 		// next configure the lores Viewfinder stream
 		// we want to make this similar to the current rpicam-apps lores stream
+
+		if (!options->lores_width || !options->lores_height)
+		{
+			options->lores_width = 640;
+			options->lores_height = 360;
+		}
 
 		Size lores_size(options->lores_width, options->lores_height);
 		lores_size.alignDownTo(2, 2);
@@ -179,6 +214,12 @@ public:
 		// and later add a raw_mode option to the options class
 		if (options->image_stream_type == "raw" && options->image_no_teardown)
 		{
+			if (!options->image_width || !options->image_height)
+			{
+				options->image_width = 640;
+				options->image_height = 360;
+			}
+			
 			options->mode.update(configuration_->at(0).size, options->framerate);
 			options->image_mode.update(Size(options->image_width, options->image_height), options->framerate);
 			options->image_mode = selectMode(options->image_mode);
@@ -250,6 +291,9 @@ public:
 		file << image_count << std::endl;
 		file.close();
 	}
+
+	void SetImageCount(unsigned int count) { image_count = count; }
+	void SetVideoCount(unsigned int count) { video_count = count; }
 
 	void StartEncoders()
 	{
@@ -340,6 +384,7 @@ public:
 		image_saver_->SaveImage(mem, completed_request, info);
 
 		image_count++;
+		image_requested_ = false;
 	}
 
 	libcamera::Stream *ImageStream()
@@ -394,6 +439,7 @@ public:
 	void InitialiseOptions()
 	{
 		MJPEGOptions *options = GetOptions();
+		
 		video_options_ = std::make_unique<MJPEGOptions>(*GetOptions());
 		lores_options_ = std::make_unique<MJPEGOptions>(*GetOptions());
 		image_options_ = std::make_unique<MJPEGOptions>(*GetOptions());
@@ -409,6 +455,56 @@ public:
 		image_options_->width = options->image_width;
 		image_options_->height = options->image_height;
 		image_options_->buffer_count = 1;
+
+		SetVideoCaptureDuration(options->video_capture_duration * 1000);
+		SetVideoSplitInterval(options->video_split_interval * 1000);
+	}
+
+	void ReinitialiseOptions()
+	{
+		std::vector<std::string> args;
+		GetOptions()->ReconstructArgs(args);
+
+		std::vector<const char*> argv;
+		for (const auto& str : args) {
+			argv.push_back(str.c_str());
+		}
+
+		if (!GetOptions()->Parse(args.size(), const_cast<char**>(argv.data())))
+		{
+			std::cerr << "Could not parse new options" << std::endl;
+			if (GetOptions()->verbose >= 2)
+				GetOptions()->Print();
+			StopEncoders();
+			Teardown();
+			StopCamera();
+			exit(-1);
+		}
+
+		InitialiseOptions();
+	}
+
+	void ResetConfiguration()
+	{
+		configuration_.reset();
+		streams_.clear();
+	}
+
+	void InitialisePipes()
+	{
+		LOG(2, "Initialising pipes...");
+		control_pipe_ = std::make_unique<Pipe>(GetOptions()->control_file);
+		control_pipe_->createPipe();
+		control_pipe_->openPipe(false);
+		// motion_pipe = std::make_unique<Pipe>(GetOptions()->motion_pipe);
+		// motion_pipe->createPipe();
+		// motion_pipe->openPipe(true);
+	}
+
+	void ReadControlFIFO()
+	{
+		last_fifo_read_time = std::chrono::high_resolution_clock::now();
+		control_pipe_->readFIFO(this);
 	}
 
 	void MoveTempMJPEGOutput()
@@ -419,17 +515,140 @@ public:
 		// if the .tmp file exists, rename it to remove the .tmp extension, overwriting the existing file
 		if (std::filesystem::exists(mjpeg_output))
 			std::filesystem::rename(mjpeg_output, preview_output);
-		
 	}
+
+	bool CreateConfigFile(std::filesystem::path &config_path) {
+		if (!std::filesystem::exists(config_path))
+		{
+			std::ofstream mjpeg_config_file(config_path);
+			if (!mjpeg_config_file)
+			{
+				LOG(2, "Failed to create " << config_path);
+				return false;
+			}
+			mjpeg_config_file.close();
+			LOG(2, "Created Config File at: " << config_path);
+			return true;
+		}
+		LOG(2, "File already exists!");
+		return true;
+	}
+
+	void WriteOptionToConfigFile(std::string command, std::string args) 
+	{
+		if (!CreateConfigFile(config_path))
+		{
+			LOG(2, "Failed to create " << config_path);
+			return;
+		}
+		// Check for flags
+		std::ifstream mjpeg_config_file(config_path);
+    
+		if (!mjpeg_config_file.is_open()) {
+			std::cerr << "Error opening file: " << config_path << std::endl;
+			return;
+		}
+		std::string line;
+		std::stringstream fileContent;
+		bool commandFound = false;
+
+		// check if the command is already in the file
+		while (std::getline(mjpeg_config_file, line)) {
+
+			if (line.rfind(command, 0) == 0) { 
+				line = command + "=" + args;
+				commandFound = true;
+			}
+			fileContent << line << "\n";
+		}
+		mjpeg_config_file.close();
+
+
+		// Split into two cases: command found and command not found
+
+		// COMMAND NOT FOUND
+		if (!commandFound) {
+			std::ofstream mjpeg_config_file_out(config_path);
+			if (!mjpeg_config_file_out.is_open()) {
+				std::cerr << "Error opening file: " << config_path << std::endl;
+				return;
+			}
+			// std::cout << "fileContent: " << fileContent.str() << std::endl;
+			std::cout << "Command not found in the file." << std::endl;
+			// Append the line.
+			mjpeg_config_file_out << command << "=" << args << "\n";
+			mjpeg_config_file_out.close();
+
+			// std::this_thread::sleep_for(std::chrono::seconds(10)); // Sleep for 1 second
+		}
+		// COMMAND FOUND
+		else {
+			LOG(2, "Command found in file:  " << command << "=" << args);
+			std::cout << fileContent.str() << std::endl;
+			// Edit the line.
+			std::ifstream mjpeg_config_file_in(config_path);
+			while (std::getline(mjpeg_config_file_in, line)) {
+				// Check if the line starts with the option
+				if (line.find(command) == 0) {
+					// Replace the line with the new value
+					line = command + "=" + args;
+					std::cout << "line: " << line << std::endl;
+					commandFound = true;
+				}
+			mjpeg_config_file_in.close();
+			std::ofstream mjpeg_config_file_out(config_path);
+			if (!mjpeg_config_file_out.is_open()) {
+				std::cerr << "Error opening file: " << config_path << std::endl;
+				return;
+			}
+			mjpeg_config_file_out << fileContent.str();
+			// mjpeg_config_file_out << line << std::endl;  // Write the line (modified or not) to the output file
+			mjpeg_config_file_out.close();
+			}
+			// std::this_thread::sleep_for(std::chrono::seconds(10)); // Sleep for 1 second
+		}
+	}
+
+	// void WriteOptionsToConfigFile()
+	// {
+
+	// }
+
+	std::filesystem::path config_path = "/etc/rpicam-mjpeg.txt";
+
+	void SetFifoRequest(FIFORequest request) { fifo_request_ = request; }
+	FIFORequest GetFifoRequest() const { return fifo_request_; }
+	void ResetFifoRequest() { fifo_request_ = NONE; }
+	void SetLastFifoCommand(std::string command) { fifo_command_ = command; }
+	std::string GetLastFifoCommand() const { return fifo_command_; }
 
 	bool IsVideoOutputting() const { return video_outputting_; }
 	bool IsLoresOutputting() const { return lores_outputting_; }
 	bool IsImageSaverStarted() const { return image_saver_started_; }
 
+	// set time of video capture, video capture timeout duration, time of last video segment, and video segment duration
+	void UpdateLastVideoCaptureTime() { last_video_capture_time = std::chrono::high_resolution_clock::now(); }
+	void SetVideoCaptureDuration(double timeout) { video_capture_duration = std::chrono::duration<double>(timeout); }
+	void UpdateLastVideoSplitTime() { last_video_split_time = std::chrono::high_resolution_clock::now(); }
+	void SetVideoSplitInterval(double duration) { video_split_interval = std::chrono::duration<double>(duration); }
+
+	// get time of video capture, video capture timeout duration, time of last video segment, and video segment duration
+	std::chrono::time_point<std::chrono::high_resolution_clock> GetLastVideoCaptureTime() { return last_video_capture_time; }
+	std::chrono::duration<double> GetVideoCaptureDuration() { return video_capture_duration; }
+	std::chrono::time_point<std::chrono::high_resolution_clock> GetLastVideoSplitTime() { return last_video_split_time; }
+	std::chrono::duration<double> GetVideoSplitInterval() { return video_split_interval; }
+
+	std::chrono::time_point<std::chrono::high_resolution_clock> GetLastFifoReadTime() { return last_fifo_read_time; }
+
+	void RequestImage() { image_requested_ = true; }
+	bool IsImageRequested() { return image_requested_; }
+
 protected:
 	bool video_outputting_ = false;
 	bool lores_outputting_ = false;
 	bool image_saver_started_ = false;
+
+	bool image_requested_ = false;
 
 	virtual void createVideoEncoder()
 	{
@@ -470,7 +689,11 @@ protected:
 	std::unique_ptr<MJPEGOptions> lores_options_;
 	std::unique_ptr<MJPEGOptions> image_options_;
 
+	FIFORequest fifo_request_ = NONE;
+	std::string fifo_command_;
 
+	std::unique_ptr<Pipe> control_pipe_;
+	// std::unique_ptr<Pipe> motion_pipe; 
 private:
 	void videoEncodeBufferDone(void *mem)
 	{
@@ -514,6 +737,15 @@ private:
 	MetadataReadyCallback video_metadata_ready_callback_;
 	MetadataReadyCallback lores_metadata_ready_callback_;
 
+	// create variables for time of video capture, video capture timeout duration, time of last video segment, and video segment duration
+	std::chrono::time_point<std::chrono::high_resolution_clock> last_video_capture_time;
+	std::chrono::time_point<std::chrono::high_resolution_clock> last_video_split_time;
+	// set video capture timeout and video segment duration to 0ms
+	std::chrono::duration<double> video_capture_duration = std::chrono::duration<double>(0);
+	std::chrono::duration<double> video_split_interval = std::chrono::duration<double>(0);
+
+
+	std::chrono::time_point<std::chrono::high_resolution_clock> last_fifo_read_time;
 
 	struct timespec currTime;
 	struct tm *localTime;
@@ -583,9 +815,11 @@ private:
 
 	void createPath(std::string path) {
 		std::filesystem::path p(path);
-		if (!std::filesystem::exists(p)) {
-			std::filesystem::create_directories(p);
+		if (std::filesystem::exists(p)) {
+			return;
 		}
+
+		std::filesystem::create_directories(p);
 
 		struct stat buf;
         if (stat(p.c_str(), &buf) != 0) {
@@ -595,19 +829,13 @@ private:
 
 		for (auto& path : fs::recursive_directory_iterator(p))
 		{
-			if (chmod(path.path().c_str(), 0777) != 0) {
+			if (chmod(path.path().c_str(), 0755) != 0) {
 				std::cerr << "Error setting permissions on directory: " << path << std::endl;
-			}
-			if (chown(path.path().c_str(), buf.st_uid, buf.st_gid) != 0) {
-				std::cerr << "Error setting ownership on directory: " << path << std::endl;
 			}
 		}
 
-		if (chmod(p.c_str(), 0777) != 0) {
+		if (chmod(p.c_str(), 0755) != 0) {
 			std::cerr << "Error setting permissions on directory: " << p << std::endl;
-		}
-		if (chown(p.c_str(), buf.st_uid, buf.st_gid) != 0) {
-			std::cerr << "Error setting ownership on directory: " << p << std::endl;
 		}
 
 	}

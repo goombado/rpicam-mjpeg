@@ -9,6 +9,7 @@ rpicam_app_src += files([
     'rpicam_app.cpp',
     'options.cpp',
     'post_processor.cpp',
+    'pipe.cpp'
 ])
 
 core_headers = files([
@@ -29,7 +30,8 @@ core_headers = files([
     'video_options.hpp',
     'video_still_options.hpp',
     'mjpeg_options.hpp',
-    'image_saver.hpp'
+    'image_saver.hpp',
+    'pipe.hpp'
 ])
 
 # Generate a version string.

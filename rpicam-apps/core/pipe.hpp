@@ -1,10 +1,11 @@
 // pipe.hpp
 
-#ifndef PIPE_HPP
-#define PIPE_HPP
+#pragma once
 
 #include <string>
-#include <rpicam_mjpeg_encoder.hpp>
+#include <poll.h>
+
+class RPiCamMJPEGEncoder;
 
 class Pipe {
 public:
@@ -20,11 +21,10 @@ public:
     // Method to open the pipe for reading or writing
     bool openPipe(bool forWriting);
 
-    // Method to read data from the pipe
-    std::string readData();
-
-    // Method to write data to the pipe
     bool writeData(const std::string& data);
+
+    // Method to read data from the pipe
+    bool readData(std::string &data);
 
     // Method to close the pipe
     void closePipe();
@@ -32,13 +32,12 @@ public:
     // Method to remove the named FIFO pipe from the filesystem
     bool removePipe();
 
-    static void readFIFO(const std::string &pipeName, RPiCamMJPEGEncoder *encoder);
+    void readFIFO(RPiCamMJPEGEncoder *app);
 
 private:
     std::string pipeName;
     int pipeDescriptor; // File descriptor for the pipe
     bool isOpen;        // Indicates if the pipe is currently open
     bool isForWriting;  // Indicates if the pipe is opened for writing
+    struct pollfd pollFd;
 };
-
-#endif // PIPE_HPP

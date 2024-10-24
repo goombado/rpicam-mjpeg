@@ -182,6 +182,13 @@ struct VideoStillOptions : public Options
 	std::string latest;
 	bool zsl;
 
+	std::string bitrate_;
+#if LIBAV_PRESENT
+	std::string av_sync_;
+	std::string audio_bitrate_;
+#endif /* LIBAV_PRESENT */
+	std::string timelapse_;
+
 	virtual bool Parse(int argc, char *argv[]) override
 	{
 		// VideoOptions::Parse()
@@ -254,6 +261,102 @@ struct VideoStillOptions : public Options
 			throw std::runtime_error("invalid encoding format " + encoding);
 		return true;
 	}
+
+	virtual void ReconstructArgs(std::vector<std::string> &args) const override
+	{
+		Options::ReconstructArgs(args);
+
+		if (!bitrate_.empty())
+			args.push_back("--bitrate=" + bitrate_);
+		if (!profile.empty())
+			args.push_back("--profile=" + profile);
+		if (!level.empty())
+			args.push_back("--level=" + level);
+		if (intra != 0)
+			args.push_back("--intra=" + std::to_string(intra));
+		if (inline_headers)
+			args.push_back("--inline");
+		if (!codec.empty())
+			args.push_back("--codec=" + codec);
+		if (!save_pts.empty())
+			args.push_back("--save-pts=" + save_pts);
+		if (quality != 50)
+			args.push_back("--quality=" + std::to_string(quality));
+		if (listen)
+			args.push_back("--listen");
+		if (keypress)
+			args.push_back("--keypress");
+		if (signal)
+			args.push_back("--signal");
+		if (!initial.empty())
+			args.push_back("--initial=" + initial);
+		if (split)
+			args.push_back("--split");
+		if (segment != 0)
+			args.push_back("--segment=" + std::to_string(segment));
+		if (circular != 0)
+			args.push_back("--circular=" + std::to_string(circular));
+		if (frames != 0)
+			args.push_back("--frames=" + std::to_string(frames));
+#if LIBAV_PRESENT
+		if (!libav_video_codec.empty())
+			args.push_back("--libav-video-codec=" + libav_video_codec);
+		if (!libav_video_codec_opts.empty())
+			args.push_back("--libav-video-codec-opts=" + libav_video_codec_opts);
+		if (!libav_format.empty())
+			args.push_back("--libav-format=" + libav_format);
+		if (libav_audio)
+			args.push_back("--libav-audio");
+		if (!audio_codec.empty())
+			args.push_back("--audio-codec=" + audio_codec);
+		if (!audio_source.empty())
+			args.push_back("--audio-source=" + audio_source);
+		if (!audio_device.empty())
+			args.push_back("--audio-device=" + audio_device);
+		if (audio_channels != 0)
+			args.push_back("--audio-channels=" + std::to_string(audio_channels));
+		if (!audio_bitrate_.empty())
+			args.push_back("--audio-bitrate=" + audio_bitrate_);
+		if (audio_samplerate != 0)
+			args.push_back("--audio-samplerate=" + std::to_string(audio_samplerate));
+		if (!av_sync_.empty())
+			args.push_back("--av-sync=" + av_sync_);
+#endif
+		if (image_quality != 93)
+			args.push_back("--image-quality=" + std::to_string(image_quality));
+		if (exif.size() > 0)
+		{
+			std::string e = "--exif=";
+			for (const auto &tag : exif)
+				e += tag + ",";
+		}
+		if (!timelapse_.empty())
+			args.push_back("--timelapse=" + timelapse_);
+		if (framestart != 0)
+			args.push_back("--framestart=" + std::to_string(framestart));
+		if (datetime)
+			args.push_back("--datetime");
+		if (timestamp)
+			args.push_back("--timestamp");
+		if (restart != 0)
+			args.push_back("--restart=" + std::to_string(restart));
+		if (!thumb.empty())
+			args.push_back("--thumb=" + thumb);
+		if (!encoding.empty())
+			args.push_back("--encoding=" + encoding);
+		if (raw)
+			args.push_back("--raw");
+		if (!latest.empty())
+			args.push_back("--latest=" + latest);
+		if (af_on_capture)
+			args.push_back("--autofocus-on-capture");
+		if (zsl)
+			args.push_back("--zsl");
+
+		return;
+	}
+
+
 	virtual void Print() const override
 	{
 		Options::Print();
@@ -294,11 +397,4 @@ struct VideoStillOptions : public Options
 			std::cerr << "    EXIF: " << s << std::endl;
 	}
 
-private:
-	std::string bitrate_;
-#if LIBAV_PRESENT
-	std::string av_sync_;
-	std::string audio_bitrate_;
-#endif /* LIBAV_PRESENT */
-	std::string timelapse_;
 };

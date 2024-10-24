@@ -19,7 +19,6 @@ void internalMotionDetectStage::Read(boost::property_tree::ptree const &params)
     this->motion_initframes_ = params.get<int>("motion_initframes", 0);
     this->motion_startframes_ = params.get<int>("motion_startframes", 5);
     this->motion_stopframes_ = params.get<int>("motion_stopframes", 50);
-    this->motion_pipe_ = params.get<std::string>("motion_pipe", "/var/www/FIFO1");
     this->motion_file_ = params.get<int>("motion_file", 0);
 }
 
@@ -97,49 +96,62 @@ bool internalMotionDetectStage::Process(CompletedRequestPtr &completed_request){
 
     //Count number of pixels above motion_threshold_
     int motion_pixels = cv::countNonZero(masked_diff_frame > motion_threshold_);
-    std::cout<<"motion_pixels: "<<motion_pixels<<std::endl;
+    // std::cout<<"motion_pixels: "<<motion_pixels<<std::endl;
 
     if(motion_pixels > 0){
         motion_frame_counter++;
         no_motion_counter = 0;
-        std::cout<<"motion_frame_counter: "<<motion_frame_counter<<std::endl;
+        // std::cout<<"motion_frame_counter: "<<motion_frame_counter<<std::endl;
 
         if(motion_frame_counter > motion_startframes_){
             // Motion detected
-            std::cout << "Motion detected" << std::endl;
-            std::ofstream motion_pipe(motion_pipe_);
-            motion_pipe << "1";
-            motion_pipe.close();
+            if (!motion_detected) {
+                motion_detected = true;
+                std::cout << "Motion detected" << std::endl;
+                if (motion_pipe_->openPipe(true))
+                {
+                    motion_pipe_->writeData("1\n");
+                    motion_pipe_->closePipe();
+                }
+            }
         }
     } else {
         no_motion_counter++;
         motion_frame_counter = 0;
 
         if(no_motion_counter > motion_stopframes_){
-            std::cout << "No motion detected" << std::endl;
-            // No motion detected
-            std::ofstream motion_pipe(motion_pipe_);
-            motion_pipe << "0";
-            motion_pipe.close();
+            if (motion_detected) {
+                motion_detected = false;
+                std::cout << "No motion detected" << std::endl;
+                if (motion_pipe_->openPipe(true))
+                {
+                    motion_pipe_->writeData("0\n");
+                    motion_pipe_->closePipe();
+                }
+
+            }
         }
     }
 
+
+
     // Capture motion vectors to file regardless of motion detection
-    if (motion_file_) {
-        std::ofstream vector_file(motion_file_path_, std::ios::app);
-        if (vector_file.is_open()) {
-            // Write the motion vectors (masked_diff_frame) to the file
-            for (int i = 0; i < masked_diff_frame.rows; ++i) {
-                for (int j = 0; j < masked_diff_frame.cols; ++j) {
-                    vector_file << static_cast<int>(masked_diff_frame.at<uint8_t>(i, j)) << " ";
-                }
-                vector_file << std::endl;
-            }
-            vector_file.close();
-        } else {
-            std::cerr << "Unable to open vector capture file" << std::endl;
-        }
-    }
+    // if (motion_file_) {
+    //     std::ofstream vector_file(motion_file_path_, std::ios::app);
+    //     if (vector_file.is_open()) {
+    //         // Write the motion vectors (masked_diff_frame) to the file
+    //         for (int i = 0; i < masked_diff_frame.rows; ++i) {
+    //             for (int j = 0; j < masked_diff_frame.cols; ++j) {
+    //                 vector_file << static_cast<int>(masked_diff_frame.at<uint8_t>(i, j)) << " ";
+    //             }
+    //             vector_file << std::endl;
+    //         }
+    //         vector_file.close();
+    //     } else {
+    //         std::cerr << "Unable to open vector capture file" << std::endl;
+    //     }
+    // }
+    
 
     // Update the previous frame
     prev_frame = current_frame.clone();
