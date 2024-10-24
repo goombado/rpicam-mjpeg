@@ -138,19 +138,6 @@ static void saveImage(CompletedRequestPtr &completed_request, RPiCamMJPEGEncoder
 	app.SaveImage(completed_request, app.ImageStream());
 }
 
-static void prepareMJPEG(RPiCamMJPEGEncoder &app, bool restart = false)
-{
-	app.InitialiseCount();
-
-	if (restart)
-		app.ReinitialiseOptions();
-	else
-	{
-		app.InitialiseOptions();
-		app.InitialisePipes();
-	}
-}
-
 static std::unique_ptr<Output> startMJPEG(RPiCamMJPEGEncoder &app)
 {
 	app.ConfigureMJPEG();
@@ -203,7 +190,13 @@ static std::unique_ptr<Output> encodeVideoBuffer(CompletedRequestPtr &completed_
 
 static void event_loop(RPiCamMJPEGEncoder &app)
 {
-	prepareMJPEG(app);
+	if (!app.IsRestartRequested())
+	{
+		app.InitialiseOptions();
+		app.InitialisePipes();
+		app.OpenCamera();
+	}
+	app.RequestRestart(false);
 
 	MJPEGOptions const *options = app.GetOptions();
 	MJPEGOptions const *video_options = app.GetVideoOptions();
@@ -211,7 +204,6 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 	std::unique_ptr<Output> video_output;
 	std::unique_ptr<Output> lores_output;
 
-	app.OpenCamera();
 	lores_output = startMJPEG(app);
 
 	auto start_time = std::chrono::high_resolution_clock::now();
@@ -249,10 +241,10 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 					return;
 				case FIFORequest::RESTART:
 					LOG(2, "Restarting application");
+					// stopMJPEG(app, video_output, lores_output);
 					teardownMJPEG(app, video_output, lores_output);
-					prepareMJPEG(app, false);
-					lores_output = startMJPEG(app);
-					break;
+					app.RequestRestart(true);
+					return;
 				case FIFORequest::START_VIDEO:
 					video_output = startVideoOutput(video_options, app, true);
 					break;
@@ -329,17 +321,26 @@ static void event_loop(RPiCamMJPEGEncoder &app)
 int main(int argc, char *argv[])
 {
 	std::cout << "Starting rpicam_mjpeg" << std::endl;
-
+	std::unique_ptr<RPiCamMJPEGEncoder> app = std::make_unique<RPiCamMJPEGEncoder>();
 	try
 	{
-		RPiCamMJPEGEncoder app;
-		MJPEGOptions *options = app.GetOptions();
-		if (options->Parse(argc, argv))
+		while (true)
 		{
-			if (options->verbose >= 2)
-				options->Print();
+			
+			MJPEGOptions *options = app->GetOptions();
+			if (options->Parse(argc, argv))
+			{
+				if (options->verbose >= 2)
+					options->Print();
 
-			event_loop(app);
+				event_loop(*app);
+
+				if (!app->IsRestartRequested())
+					break;
+
+				// destroy encoder and create a new one
+				app.reset(new RPiCamMJPEGEncoder());
+			}
 		}
 	}
 	catch (std::exception const &e)

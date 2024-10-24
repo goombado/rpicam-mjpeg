@@ -460,30 +460,6 @@ public:
 		SetVideoSplitInterval(options->video_split_interval * 1000);
 	}
 
-	void ReinitialiseOptions()
-	{
-		std::vector<std::string> args;
-		GetOptions()->ReconstructArgs(args);
-
-		std::vector<const char*> argv;
-		for (const auto& str : args) {
-			argv.push_back(str.c_str());
-		}
-
-		if (!GetOptions()->Parse(args.size(), const_cast<char**>(argv.data())))
-		{
-			std::cerr << "Could not parse new options" << std::endl;
-			if (GetOptions()->verbose >= 2)
-				GetOptions()->Print();
-			StopEncoders();
-			Teardown();
-			StopCamera();
-			exit(-1);
-		}
-
-		InitialiseOptions();
-	}
-
 	void ResetConfiguration()
 	{
 		configuration_.reset();
@@ -536,6 +512,13 @@ public:
 
 	void WriteOptionToConfigFile(std::string command, std::string args) 
 	{
+		if (GetOptions()->config_file.empty())
+		{
+			LOG(2, "No config file specified");
+			return;
+		}
+
+		std::filesystem::path config_path = GetOptions()->config_file;
 		if (!CreateConfigFile(config_path))
 		{
 			LOG(2, "Failed to create " << config_path);
@@ -568,7 +551,7 @@ public:
 
 		// COMMAND NOT FOUND
 		if (!commandFound) {
-			std::ofstream mjpeg_config_file_out(config_path);
+			std::ofstream mjpeg_config_file_out(config_path, std::ios::app);
 			if (!mjpeg_config_file_out.is_open()) {
 				std::cerr << "Error opening file: " << config_path << std::endl;
 				return;
@@ -584,7 +567,7 @@ public:
 		// COMMAND FOUND
 		else {
 			LOG(2, "Command found in file:  " << command << "=" << args);
-			std::cout << fileContent.str() << std::endl;
+			// std::cout << fileContent.str() << std::endl;
 			// Edit the line.
 			std::ifstream mjpeg_config_file_in(config_path);
 			while (std::getline(mjpeg_config_file_in, line)) {
@@ -592,11 +575,11 @@ public:
 				if (line.find(command) == 0) {
 					// Replace the line with the new value
 					line = command + "=" + args;
-					std::cout << "line: " << line << std::endl;
+					LOG(2, "line: " << line);
 					commandFound = true;
 				}
 			mjpeg_config_file_in.close();
-			std::ofstream mjpeg_config_file_out(config_path);
+			std::ofstream mjpeg_config_file_out(config_path, std::ios::trunc);
 			if (!mjpeg_config_file_out.is_open()) {
 				std::cerr << "Error opening file: " << config_path << std::endl;
 				return;
@@ -613,8 +596,6 @@ public:
 	// {
 
 	// }
-
-	std::filesystem::path config_path = "/etc/rpicam-mjpeg.txt";
 
 	void SetFifoRequest(FIFORequest request) { fifo_request_ = request; }
 	FIFORequest GetFifoRequest() const { return fifo_request_; }
@@ -643,12 +624,15 @@ public:
 	void RequestImage() { image_requested_ = true; }
 	bool IsImageRequested() { return image_requested_; }
 
+	void RequestRestart(bool restart) { request_restart_ = restart; }
+	bool IsRestartRequested() { return request_restart_; }
+
 protected:
 	bool video_outputting_ = false;
 	bool lores_outputting_ = false;
 	bool image_saver_started_ = false;
-
 	bool image_requested_ = false;
+	bool request_restart_ = false;
 
 	virtual void createVideoEncoder()
 	{
