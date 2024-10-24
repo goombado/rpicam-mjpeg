@@ -263,7 +263,10 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
             if (!isFloat(arg))
                 app->SetFifoRequest(FIFORequest::UNKNOWN);
             else
+            {
                 app->WriteOptionToConfigFile("brightness", arg);
+                std::cout << "Brightness: " << arg << std::endl;
+            }
             break;
         
         case SH: // sharpness

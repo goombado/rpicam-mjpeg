@@ -60,9 +60,9 @@ struct MJPEGOptions : public VideoStillOptions
         ("image-no-teardown", value<bool>(&image_no_teardown)->default_value(false)->implicit_value(true),
             "This will force the image stream to run simultaneously with video and lores streams. If --image-stream-type is \"video\" or \"lores\" this flag is enabled by default, and if it is \"still\" this flag cannot be enabled (stream type \"still\" can not run concurrently with video and lores streams and requires camera teardown)")
         ("video-capture-duration,vt", value<unsigned int>(&video_capture_duration)->default_value(0),
-            "Sets video capture duration in seconds. If set to 0, video will keep recording until stopped.")
+            "NOT WORKING: Sets video capture duration in seconds. If set to 0, video will keep recording until stopped.")
         ("video-split-interval,vi", value<unsigned int>(&video_split_interval)->default_value(0),
-            "Sets video split interval in seconds. If set to 0, video will not be split.")
+            "NOT WORKING: Sets video split interval in seconds. If set to 0, video will not be split.")
         ("control-file", value<std::string>(&control_file)->default_value("/var/www/FIFO"),
             "Sets the path to the named pipe for control commands. \"/var/www/FIFO\" is the default path")
         ("fifo-interval", value<unsigned int>(&fifo_interval)->default_value(100000),
@@ -115,9 +115,9 @@ struct MJPEGOptions : public VideoStillOptions
             image_height = 360;
         
         // check if the file /etc/rpicam-mjpeg exists, and if so set config_file to this
-        std::ifstream ifs("/etc/rpicam-mjpeg");
-        if (ifs and config_file.empty() and !ignore_etc_config)
-            config_file = "/etc/rpicam-mjpeg";
+        // std::ifstream ifs("/etc/rpicam-mjpeg");
+        // if (ifs and config_file.empty() and !ignore_etc_config)
+        config_file = "/etc/rpicam-mjpeg";
 
         if (!VideoStillOptions::Parse(argc, argv))
             return false;
@@ -171,44 +171,6 @@ struct MJPEGOptions : public VideoStillOptions
         return true;
     }
 
-    void ReconstructArgs(std::vector<std::string> &args) const override
-    {
-        VideoStillOptions::ReconstructArgs(args);
-
-        if (!output_image.empty())
-            args.push_back("--image-output=" + output_image);
-        if (!output_preview.empty())
-            args.push_back("--preview-output=" + output_preview);
-        if (!output_video.empty())
-            args.push_back("--video-output=" + output_video);
-        if (!media_path.empty())
-            args.push_back("--media-path=" + media_path);
-        if (image_width != 0)
-            args.push_back("--image-width=" + std::to_string(image_width));
-        if (image_height != 0)
-            args.push_back("--image-height=" + std::to_string(image_height));
-        if (!image_mode_string.empty())
-            args.push_back("--image-mode=" + image_mode_string);
-        if (!image_stream_type.empty())
-            args.push_back("--image-stream-type=" + image_stream_type);
-        if (image_raw_convert)
-            args.push_back("--image-raw-convert");
-        if (image_no_teardown)
-            args.push_back("--image-no-teardown");
-        if (video_capture_duration != 0)
-            args.push_back("--video-capture-duration=" + std::to_string(video_capture_duration));
-        if (video_split_interval != 0)
-            args.push_back("--video-split-interval=" + std::to_string(video_split_interval));
-        if (!control_file.empty())
-            args.push_back("--control-file=" + control_file);
-        if (fifo_interval != 0)
-            args.push_back("--fifo-interval=" + std::to_string(fifo_interval));
-        if (!motion_pipe.empty())
-            args.push_back("--motion-pipe=" + motion_pipe);
-        
-        return;
-    }
-
     void Print() const override
     {
         VideoStillOptions::Print();
@@ -222,6 +184,13 @@ struct MJPEGOptions : public VideoStillOptions
         std::cout << "    Image stream type: " << image_stream_type << std::endl;
         std::cout << "    Raw image convert: " << (image_raw_convert ? "true" : "false") << std::endl;
         std::cout << "    Image no teardown: " << (image_no_teardown ? "true" : "false") << std::endl;
+        std::cout << "    Video capture duration: " << video_capture_duration << std::endl;
+        std::cout << "    Video split interval: " << video_split_interval << std::endl;
+        std::cout << "    Control file: " << control_file << std::endl;
+        std::cout << "    FIFO interval: " << fifo_interval << std::endl;
+        std::cout << "    Motion pipe: " << motion_pipe << std::endl;
+        std::cout << "    Ignore /etc/rpicam-mjpeg: " << (ignore_etc_config ? "true" : "false") << std::endl;
+        std::cout << "    Config File: " << config_file << std::endl;
     }
 
     StillOptions* GetStillOptions()

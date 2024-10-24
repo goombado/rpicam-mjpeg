@@ -176,7 +176,6 @@ struct Options
 	bool no_raw;
 
 	virtual bool Parse(int argc, char *argv[]);
-	virtual void ReconstructArgs(std::vector<std::string> &args) const;
 	virtual void Print() const;
 
 	void SetApp(RPiCamApp *app) { app_ = app; }
