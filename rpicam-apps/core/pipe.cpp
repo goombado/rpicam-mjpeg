@@ -7,6 +7,8 @@
 #include <cstdio> // For std::remove
 #include <string.h>
 #include <unordered_map>
+#include <algorithm> // For std::transform
+#include <cctype>    // For std::toupper
 
 #include "pipe.hpp"
 #include "rpicam_mjpeg_encoder.hpp"
@@ -155,6 +157,12 @@ bool Pipe::removePipe() {
     return (std::remove(pipeName.c_str()) == 0);
 }
 
+std::string to_upper(std::string input) {
+    std::transform(input.begin(), input.end(), input.begin(),
+                   ::toupper); // Use the global scope toupper
+    return input;
+}
+
 void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
 
     if (!openPipe(false)) {
@@ -174,8 +182,9 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
     Flag flag;
 
     std::stringstream ss(pipe_data);
-    std::string command;
-    ss >> command;
+    std::string command_raw;
+    ss >> command_raw;
+    std::string command = to_upper(command_raw);
     LOG(2, "Command: " << command);
 
     if (flag_map.find(command) != flag_map.end())
@@ -190,6 +199,7 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
     {
         case IO: // image-output
             app->SetFifoRequest(FIFORequest::UNKNOWN);
+            app->WriteOptionToConfigFile("--nopreview", "");
             break;
 
         case MO: // mjpeg-output

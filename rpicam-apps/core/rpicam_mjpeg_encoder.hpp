@@ -10,6 +10,7 @@
 
 #include <string>
 #include <filesystem>
+#include <chrono>
 
 #include <dirent.h>
 #include <time.h>
@@ -495,7 +496,7 @@ public:
 			std::ofstream mjpeg_config_file(config_path);
 			if (!mjpeg_config_file)
 			{
-				throw std::runtime_error("Failed to create /etc/rpicam-mjpeg");
+				LOG(2, "Failed to create " << config_path);
 				return false;
 			}
 			mjpeg_config_file.close();
@@ -505,23 +506,43 @@ public:
 		return true;
 	}
 
-	void WriteOptionToConfigFile(std::string option) 
+	void WriteOptionToConfigFile(std::string command, std::string args) 
 	{
 		if (!CreateConfigFile(config_path))
 		{
-			LOG_ERROR("Failed to create " << config_path);
+			LOG(2, "Failed to create " << config_path);
 			return;
 		}
-		std::ofstream mjpeg_config_file(config_path);
-		if (!mjpeg_config_file)
-		{
-			LOG_ERROR("Failed to open " << config_path);
+		// Check for flags
+		std::ifstream mjpeg_config_file(config_path);
+    
+		if (!mjpeg_config_file.is_open()) {
+			std::cerr << "Error opening file: " << config_path << std::endl;
 			return;
 		}
-		mjpeg_config_file << option << "\n";
+		std::string line;
+		std::stringstream fileContent;
+		bool commandFound = false;
+		// check if the command is already in the file
+		while (std::getline(mjpeg_config_file, line)) {
+
+			if (line.rfind(command, 0) == 0) { 
+				line = command + "=" + args;
+				commandFound = true;
+			}
+			fileContent << line << "\n";
+		}
 		mjpeg_config_file.close();
-		LOG(2, "Added Option to Config File: " << option);
-		
+		if (!commandFound) {
+			std::cout << "Command not found in the file." << std::endl;
+			// Append the line.
+			std::this_thread::sleep_for(std::chrono::seconds(10)); // Sleep for 1 second
+		}
+		else {
+			LOG(2, "Command found in file:  " << command << "=" << args);
+			// Edit the line.
+		}
+
 	}
 
 	// void WriteOptionsToConfigFile()
@@ -529,7 +550,7 @@ public:
 
 	// }
 
-	std::filesystem::path config_path = "/etc/rpicam-mjpeg";
+	std::filesystem::path config_path = "/etc/rpicam-mjpeg.txt";
 
 	void SetFifoRequest(FIFORequest request) { fifo_request_ = request; }
 	FIFORequest GetFifoRequest() const { return fifo_request_; }
