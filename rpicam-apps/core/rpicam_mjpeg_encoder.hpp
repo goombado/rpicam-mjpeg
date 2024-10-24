@@ -495,17 +495,17 @@ public:
 		control_pipe_ = std::make_unique<Pipe>(GetOptions()->control_file);
 		control_pipe_->createPipe();
 		control_pipe_->openPipe(false);
-		motion_pipe = std::make_unique<Pipe>(GetOptions()->motion_pipe);
-		motion_pipe->createPipe();
+		// motion_pipe = std::make_unique<Pipe>(GetOptions()->motion_pipe);
+		// motion_pipe->createPipe();
 		// motion_pipe->openPipe(true);
 	}
 
 	void ClosePipes()
 	{
 		control_pipe_->closePipe();
-		control_pipe_->removePipe();
-		motion_pipe->closePipe();
-		motion_pipe->removePipe();
+		// control_pipe_->removePipe();
+		// motion_pipe->closePipe();
+		// motion_pipe->removePipe();
 	}
 
 	void ReadControlFIFO()
@@ -601,7 +601,7 @@ protected:
 	std::string fifo_command_;
 
 	std::unique_ptr<Pipe> control_pipe_;
-	std::unique_ptr<Pipe> motion_pipe; 
+	// std::unique_ptr<Pipe> motion_pipe; 
 private:
 	void videoEncodeBufferDone(void *mem)
 	{

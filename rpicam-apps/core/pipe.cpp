@@ -93,14 +93,23 @@ bool Pipe::createPipe() {
 
 bool Pipe::openPipe(bool forWriting) {
     // Open the pipe for reading or writing
-    pipeDescriptor = open(pipeName.c_str(), (forWriting ? O_WRONLY : (O_RDONLY | O_NONBLOCK)));
-    if (pipeDescriptor == -1) {
+    int flags = O_NONBLOCK;
+    if (forWriting)
+        flags |= O_WRONLY;
+    else
+        flags |= O_RDONLY;
+
+    pipeDescriptor = open(pipeName.c_str(), flags);
+    if (pipeDescriptor == -1)
+    {
         std::cerr << "Failed to open pipe: " << pipeName << std::endl;
+        std::cerr << strerror(errno) << std::endl;
         return false;
     }
     isOpen = true;
     isForWriting = forWriting;
-    if (!forWriting) {
+    if (!forWriting)
+    {
         pollFd.fd = pipeDescriptor;
         pollFd.events = POLLIN;
     }
@@ -108,7 +117,8 @@ bool Pipe::openPipe(bool forWriting) {
 }
 
 bool Pipe::readData(std::string &data) {
-    if (!isOpen || isForWriting) {
+    if (!isOpen || isForWriting)
+    {
         std::cerr << "Pipe is not open for reading." << std::endl;
         data = "";
         return false;
@@ -126,7 +136,8 @@ bool Pipe::readData(std::string &data) {
 
     char buffer[1024];
     ssize_t bytesRead = read(pipeDescriptor, buffer, sizeof(buffer) - 1);
-    if (bytesRead > 0) {
+    if (bytesRead > 0)
+    {
         buffer[bytesRead] = '\0'; // Null-terminate the buffer
         LOG(2, "Read " << bytesRead << " bytes from pipe: " << buffer);
         data = std::string(buffer);
@@ -137,12 +148,19 @@ bool Pipe::readData(std::string &data) {
 }
 
 bool Pipe::writeData(const std::string& data) {
-    if (!isOpen || !isForWriting) {
+    if (!isOpen || !isForWriting)
+    {
         std::cerr << "Pipe is not open for writing." << std::endl;
         return false;
     }
 
     ssize_t bytesWritten = write(pipeDescriptor, data.c_str(), data.size());
+    if (bytesWritten == -1)
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+        {
+            std::cerr << "Write failed: Pipe is full or no reader is present." << std::endl;
+            return false;
+        }
     return bytesWritten == static_cast<ssize_t>(data.size());
 }
 
