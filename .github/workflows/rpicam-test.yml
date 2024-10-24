@@ -33,8 +33,10 @@ jobs:
                     python3-ply libglib2.0-dev libgstreamer-plugins-base1.0-dev \
                     libdrm-dev libexif-dev libavcodec-dev libavdevice-dev libcamera-dev \
                     libpng-dev libepoxy-dev libboost-program-options-dev libopencv-dev \
-                    python3-dev python3-pip dcraw netpbm libjpeg-dev libjpeg-turbo-progs
-                    sudo pip3 install --upgrade pybind11 meson ninja
+                    python3-dev python3-pip dcraw netpbm libjpeg-dev libjpeg-turbo-progs \
+                    python3-pybind11 meson ninja-build
+
+            #        sudo pip3 install --upgrade pybind11 meson ninja
 
             #   - name: Build and install libcamera
             #     if: steps.cache-libs.outputs.cache-hit != 'true'
