@@ -123,8 +123,8 @@ The following commands can be written to the FIFO and will be parsed by rpicam-m
 | `ca` 0/1 n                     | Stop/start video capture, optional timeout after n seconds (timeout not implemented) |
 | `im`                           | Capture image                                                |
 | `tl` 0/1                       | Stop/start timelapse (NOTE: NOT IMPLEMENTED)                 |
-| `tv` n                         | n * 0.1 seconds between images in timelapse                  |
-| `vi` n                         | Video split interval in seconds                              |
+| `tv` n                         | n * 0.1 seconds between images in timelapse (NOT IMPLEMENTED)|
+| `vi` n                         | Video split interval in seconds (NOT IMPLEMENTED)            |
 | `md` <0/1> \<motion json file> | Stop/start motion detection.<br />Specify JSON file with parameters, otherwise `internal_motion_detect.json` will be used by default. |
 
 ### Motion Detection
