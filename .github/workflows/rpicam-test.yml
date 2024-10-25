@@ -3,7 +3,7 @@ name: Build rpicam-apps and test
 on:
     push:
         branches:
-            - pat-final-testing
+            - main
     pull_request:
 
 jobs:
