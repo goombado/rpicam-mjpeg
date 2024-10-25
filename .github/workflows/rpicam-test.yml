@@ -56,6 +56,8 @@ jobs:
                     meson compile -C build
               - name: Run test.py script
                 run: |
+                    pwd
+                    cd rpicam-apps
                     make test
 
             #   - name: Post-build cache save
