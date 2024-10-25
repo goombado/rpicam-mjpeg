@@ -758,7 +758,6 @@ def test_mjpeg_encodings(exe_dir, output_dir):
     
     print("All encoding tests passed for rpicam-mjpeg.")
 
-import subprocess
 
 def test_mjpeg_default_output(exe_dir, output_dir):
     # Define the executable path for rpicam-mjpeg
