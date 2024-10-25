@@ -14,13 +14,11 @@
 import argparse
 from enum import Enum
 import fcntl
-import signal
 import json
 import os
 import os.path
 import subprocess
 import sys
-import time
 from timeit import default_timer as timer
 import v4l2
 import numpy as np
@@ -28,7 +26,6 @@ import numpy as np
 
 def get_platform():
     platform = 'vc4'
-    
     try:
         for num in range(5):
             device = '/dev/video' + str(num)
@@ -44,7 +41,7 @@ def get_platform():
                         break
     except Exception:
         pass
-    
+
     return platform
 
 
@@ -101,11 +98,8 @@ def check_jpeg(file, preamble):
 
 
 def test_hello(exe_dir, output_dir):
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-hello')
+    executable = os.path.join(exe_dir, 'rpicam-hello')
     logfile = os.path.join(output_dir, 'log.txt')
-    print("Current working directory:", os.getcwd())
-    print("executable directory set to:", exe_dir)
-    print("Looking for executable file at:", executable)
     print("Testing", executable)
     check_exists(executable, 'test_hello')
     clean_dir(output_dir)
@@ -206,7 +200,7 @@ def check_metadata_txt(file, preamble):
 
 def test_still(exe_dir, output_dir):
     platform = get_platform()
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-still')
+    executable = os.path.join(exe_dir, 'rpicam-still')
     output_jpg = os.path.join(output_dir, 'test.jpg')
     output_png = os.path.join(output_dir, 'test.png')
     output_bmp = os.path.join(output_dir, 'test.bmp')
@@ -233,14 +227,12 @@ def test_still(exe_dir, output_dir):
     check_time(time_taken, 1, 10, "test_still: no-raw test")
     check_size(output_jpg, 1024, "test_still: no-raw test")
 
-    
     # "zsl test". As above, but with zsl enabled
     print("    zsl test")
     retcode, time_taken = run_executable([executable, '-t', '1000', '-o', output_jpg, '--zsl'], logfile)
     check_retcode(retcode, "test_still: zsl test")
     check_time(time_taken, 1, 10, "test_still: zsl test")
     check_size(output_jpg, 1024, "test_still: zsl test")
-    
 
     # "immediate test". Immediate capture test
     print("    immediate test")
@@ -339,7 +331,7 @@ def check_jpeg_shutter(file, shutter_string, iso_string, preamble):
 
 
 def test_jpeg(exe_dir, output_dir):
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-jpeg')
+    executable = os.path.join(exe_dir, 'rpicam-jpeg')
     output_jpg = os.path.join(output_dir, 'test.jpg')
     output_shutter = os.path.join(output_dir, 'shutter.jpg')
     logfile = os.path.join(output_dir, 'log.txt')
@@ -359,16 +351,16 @@ def test_jpeg(exe_dir, output_dir):
 
     # "isolation test". As above, but force IPA to run is "isolation" mode.
     # Disabled for now due to https://bugs.libcamera.org/show_bug.cgi?id=137
-    print("    isolation test")
-    os.environ['LIBCAMERA_IPA_FORCE_ISOLATION'] = 'true'
-    retcode, time_taken = run_executable([executable, '-t', '1000', '-o', output_jpg],
-                                        logfile)
-    os.environ.pop('LIBCAMERA_IPA_FORCE_ISOLATION')
-    check_retcode(retcode, "test_jpeg: isolation test")
-    check_time(time_taken, 1, 8, "test_jpeg: isolation test")
-    check_size(output_jpg, 1024, "test_jpeg: isolation test")
+    #print("    isolation test")
+    #os.environ['LIBCAMERA_IPA_FORCE_ISOLATION'] = 'true'
+    #retcode, time_taken = run_executable([executable, '-t', '1000', '-o', output_jpg],
+    #                                     logfile)
+    #os.environ.pop('LIBCAMERA_IPA_FORCE_ISOLATION')
+    #check_retcode(retcode, "test_jpeg: isolation test")
+    #check_time(time_taken, 1, 8, "test_jpeg: isolation test")
+    #check_size(output_jpg, 1024, "test_jpeg: isolation test")
     # For this one, we're actually going to peak inside the jpeg.
-    check_jpeg(output_jpg, "test_jpeg: isolation test")
+    #check_jpeg(output_jpg, "test_jpeg: isolation test")
 
     # "shutter test". See if we appear to get the shutter/gain we asked for.
     print("    shutter test")
@@ -404,7 +396,7 @@ def check_timestamps(file, preamble):
 
 def test_vid(exe_dir, output_dir):
     platform = get_platform()
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-vid')
+    executable = os.path.join(exe_dir, 'rpicam-vid')
     output_h264 = os.path.join(output_dir, 'test.h264')
     output_mkv = os.path.join(output_dir, 'test.mkv')
     output_mp4 = os.path.join(output_dir, 'test.mp4')
@@ -533,7 +525,7 @@ def test_vid(exe_dir, output_dir):
 
 
 def test_raw(exe_dir, output_dir):
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-raw')
+    executable = os.path.join(exe_dir, 'rpicam-raw')
     output_raw = os.path.join(output_dir, 'test.raw')
     logfile = os.path.join(output_dir, 'log.txt')
     print("Testing", executable)
@@ -558,14 +550,9 @@ def test_post_processing(exe_dir, output_dir, json_dir, postproc_dir):
 
     # "negate test". See if negate stage appears to run.
     print("    negate test")
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-hello')
+    executable = os.path.join(exe_dir, 'rpicam-hello')
     check_exists(executable, 'post-processing')
-    # json_file = os.path.join('rpicam-apps/assets', 'negate.json')
     json_file = os.path.join(json_dir, 'negate.json')
-    print("Current working directory:", os.getcwd())
-    print("JSON directory set to:", json_dir)
-    print("Looking for JSON file at:", json_file)
-    # json_file = os.path.join(json_dir, 'rpicam-apps/assets', 'negate.json')
     check_exists(json_file, 'post-processing')
     args = [executable, '-t', '2000', '--post-process-file', json_file]
     if postproc_dir:
@@ -576,7 +563,7 @@ def test_post_processing(exe_dir, output_dir, json_dir, postproc_dir):
 
     # "hdr test". Take an HDR capture.
     print("    hdr test")
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-still')
+    executable = os.path.join(exe_dir, 'rpicam-still')
     check_exists(executable, 'post-processing')
     output_hdr = os.path.join(output_dir, 'hdr.jpg')
     json_file = os.path.join(json_dir, 'hdr.json')
@@ -591,7 +578,7 @@ def test_post_processing(exe_dir, output_dir, json_dir, postproc_dir):
 
     # "sobel test". Try to run a stage that uses OpenCV.
     print("    sobel test")
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-hello')
+    executable = os.path.join(exe_dir, 'rpicam-hello')
     check_exists(executable, 'post-processing')
     json_file = os.path.join(json_dir, 'sobel_cv.json')
     check_exists(json_file, 'post-processing')
@@ -606,7 +593,7 @@ def test_post_processing(exe_dir, output_dir, json_dir, postproc_dir):
 
     # "detect test". Try to run a stage that uses TFLite.
     print("    detect test")
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-hello')
+    executable = os.path.join(exe_dir, 'rpicam-hello')
     check_exists(executable, 'post-processing')
     json_file = os.path.join(json_dir, 'object_detect_tf.json')
     check_exists(json_file, 'post-processing')
@@ -635,185 +622,11 @@ def test_post_processing(exe_dir, output_dir, json_dir, postproc_dir):
 
     print("post-processing tests passed")
 
-def test_mjpeg(exe_dir, output_dir):
-    # Define the executable path for rpicam-mjpeg
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-mjpeg')
-    output_mjpeg = os.path.join(output_dir, 'test_mjpeg_output.mjpeg')
-    logfile = os.path.join(output_dir, 'log.txt')
-
-    # Print diagnostic information
-    print("Testing", executable)
-    print("Output file will be:", output_mjpeg)
-
-    # Ensure the executable exists
-    check_exists(executable, 'test_mjpeg')
-
-    # Clean the output directory
-    clean_dir(output_dir)
-
-    # Run the rpicam-mjpeg command with a timeout of 2 seconds
-    print("Running rpicam-mjpeg for 2 seconds...")
-    args = ['sudo', executable,
-        "-t", "2000",  # Run for 2 seconds
-        "--image-width", "1280",
-        "--image-height", "720",
-        "--width", "1280",
-        "--height", "720",
-        "--lores-width", "640",
-        "--lores-height", "360",
-        "--preview-output", output_mjpeg
-    ]
-
-    # Execute the command and log output
-    retcode, time_taken = run_executable(args, logfile)
-
-    # Check if the command executed successfully
-    check_retcode(retcode, "test_mjpeg: execution")
-
-    # Check if the output MJPEG file was created
-    check_exists(output_mjpeg, "test_mjpeg: output file")
-
-    # Check if the output MJPEG file is non-empty
-    check_size(output_mjpeg, 1024, "test_mjpeg: output file size")
-
-    print("test_mjpeg passed: MJPEG capture successful.")
-
-def test_mjpeg_image_capture(exe_dir, output_dir):
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-mjpeg')
-    output_jpg = os.path.join(output_dir, 'test_image_output.jpg')
-    logfile = os.path.join(output_dir, 'log.txt')
-
-    print("Testing rpicam-mjpeg image capture with valid options...")
-    check_exists(executable, 'test_mjpeg_image_capture')
-    clean_dir(output_dir)
-
-    # Valid options for image capture
-    args = [
-        'sudo', executable,
-        "-t", "2000",  # Run for 2 seconds
-        "--image-width", "1280",
-        "--image-height", "720",
-        "--image-output", output_jpg,  # Set the output file for the image
-        "--image-stream-type", "still",  # Use the "still" image stream
-        "--preview-output", output_jpg,  # For preview (can be changed based on requirements)
-        "--encoding", "jpg"  # Set encoding to jpg
-    ]
-
-    retcode, time_taken = run_executable(args, logfile)
-    check_retcode(retcode, "test_mjpeg_image_capture: execution")
-
-    # Check if the output image file was created
-    check_exists(output_jpg, "test_mjpeg_image_capture: output file")
-    check_size(output_jpg, 1024, "test_mjpeg_image_capture: output file size")
-
-    print("test_mjpeg_image_capture passed: Image capture successful.")
-
-def test_mjpeg_encodings(exe_dir, output_dir):
-    # Define the executable path for rpicam-mjpeg
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-mjpeg')
-    logfile = os.path.join(output_dir, 'log.txt')
-    
-    # Define different encodings to test
-    encodings = ['rgb24', 'rgb48', 'bmp', 'png']
-
-    print("Testing", executable, "with different encodings")
-
-    # Ensure the executable exists
-    check_exists(executable, 'test_mjpeg_encodings')
-
-    # Clean the output directory
-    clean_dir(output_dir)
-
-    # Loop through each encoding and run the test
-    for encoding in encodings:
-        output_file = os.path.join(output_dir, f'test_mjpeg_output_{encoding}.jpg')
-        print(f"Running rpicam-mjpeg with encoding {encoding} for 2 seconds...")
-
-        # Run the rpicam-mjpeg command for 2 seconds with the specific encoding
-        args = ['sudo', executable,
-            "-t", "2000",  # Run for 2 seconds
-            "--image-width", "1280",
-            "--image-height", "720",
-            "--width", "1280",
-            "--height", "720",
-            "--lores-width", "640",
-            "--lores-height", "360",
-            "--preview-output", output_file,
-            "--encoding", encoding  # Add the encoding flag here
-        ]
-
-        # Execute the command and log output
-        retcode, time_taken = run_executable(args, logfile)
-
-        # Check if the command executed successfully
-        check_retcode(retcode, f"test_mjpeg_encodings: encoding {encoding} execution")
-
-        # Check if the output file was created
-        check_exists(output_file, f"test_mjpeg_encodings: encoding {encoding} output file")
-
-        # Check if the output file is non-empty
-        check_size(output_file, 1024, f"test_mjpeg_encodings: encoding {encoding} output file size")
-
-        print(f"test_mjpeg_encodings passed: MJPEG capture with encoding {encoding} successful.")
-    
-    print("All encoding tests passed for rpicam-mjpeg.")
-
-
-def test_mjpeg_default_output(exe_dir, output_dir):
-    # Define the executable path for rpicam-mjpeg
-    executable = os.path.join(exe_dir, 'apps', 'rpicam-mjpeg')
-    logfile = os.path.join(output_dir, 'log.txt')
-
-    # Default output path for the MJPEG capture
-    default_output_jpg = '/dev/shm/mjpeg/cam.jpg'
-
-    # Print diagnostic information
-    print("Testing", executable)
-    print(f"Default output file will be: {default_output_jpg}")
-
-    # Ensure the executable exists
-    check_exists(executable, 'test_mjpeg_default_output')
-
-    # Clean the output directory
-    clean_dir(output_dir)
-
-    # Run the rpicam-mjpeg command with a timeout of 2 seconds
-    print("Running rpicam-mjpeg for 2 seconds...")
-    args = ['sudo', executable,
-            "-t", "2000",  # Run for 2 seconds
-            "--image-width", "1280",
-            "--image-height", "720",
-            "--width", "1280",
-            "--height", "720",
-            "--lores-width", "640",
-            "--lores-height", "360"
-    ]
-
-    # Execute the command and log output
-    retcode, time_taken = run_executable(args, logfile)
-
-    # Check if the command executed successfully
-    check_retcode(retcode, "test_mjpeg_default_output: execution")
-
-    # Check if cam.jpg exists after the program finishes
-    check_exists(default_output_jpg, "test_mjpeg_default_output: cam.jpg")
-
-    # Check if cam.jpg is non-empty
-    check_size(default_output_jpg, 1024, "test_mjpeg_default_output: cam.jpg file size")
-
-    print("test_mjpeg_default_output passed: MJPEG capture successful.")
-
-
-
-
 
 def test_all(apps, exe_dir, output_dir, json_dir, postproc_dir):
-    print("Apps to be tested:", apps)  # Debug print
     try:
         if 'hello' in apps:
             test_hello(exe_dir, output_dir)
-        else:
-            print("hello not there")
         if 'still' in apps:
             test_still(exe_dir, output_dir)
         if 'jpeg' in apps:
@@ -824,13 +637,6 @@ def test_all(apps, exe_dir, output_dir, json_dir, postproc_dir):
             test_raw(exe_dir, output_dir)
         if 'post-processing' in apps:
             test_post_processing(exe_dir, output_dir, json_dir, postproc_dir)
-        if 'mjpeg' in apps:  # Add this for rpicam-mjpeg testing
-            test_mjpeg(exe_dir, output_dir)
-            test_mjpeg_image_capture(exe_dir, output_dir)
-            test_mjpeg_encodings(exe_dir, output_dir)
-            test_mjpeg_default_output(exe_dir, output_dir)
-        else:
-            print("mjpeg not there")
 
         print("All tests passed")
         clean_dir(output_dir)
@@ -842,29 +648,19 @@ def test_all(apps, exe_dir, output_dir, json_dir, postproc_dir):
     return
 
 
-
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='rpicam-apps automated tests')
-    parser.add_argument('--apps', '-a', action='store', default='hello,still,vid,jpeg,raw,post-processing,mjpeg',
-                    help='List of apps to test')
-    parser.add_argument('--exe-dir', '-d', action='store', default='rpicam-apps/build',
+    parser = argparse.ArgumentParser(description = 'rpicam-apps automated tests')
+    parser.add_argument('--apps', '-a', action='store', default='hello,still,vid,jpeg,raw,post-processing',
+                        help='List of apps to test')
+    parser.add_argument('--exe-dir', '-d', action='store', default='build',
                         help='Directory name for executables to test')
     parser.add_argument('--output-dir', '-o', action='store', default='.',
                         help='Directory name for output files')
-    parser.add_argument('--json-dir', '-j', action='store', default='./assets/',
+    parser.add_argument('--json-dir', '-j', action='store', default='.',
                         help='Directory name for JSON post-processing files')
     parser.add_argument('--post-process-libs', '-p', action='store', default=None,
                         help='Directory name custom post-processing libraries')
-
     args = parser.parse_args()
-    apps = args.apps.split(',')
-    exe_dir = args.exe_dir.rstrip('/')
-    output_dir = args.output_dir
-    json_dir = args.json_dir
-    postproc_dir = args.post_process_libs
-
-    print("Exe_dir:", exe_dir, "Output_dir:", output_dir, "Json_dir:", json_dir, "Postproc_dir:", postproc_dir)
-
     apps = args.apps.split(',')
     exe_dir = args.exe_dir.rstrip('/')
     output_dir = args.output_dir

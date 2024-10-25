@@ -6,7 +6,7 @@ project('rpicam-apps', 'c', 'cpp',
             'warning_level=3',
             'cpp_std=c++17',
             'c_std=c11',
-            'buildtype=release',
+            'buildtype=release',  # Default build type is release
         ],
         license : 'BSD-2-Clause')
 
@@ -17,9 +17,17 @@ cpp_arguments = ['-pedantic', '-Wno-unused-parameter', '-faligned-new']
 # Needed for file sizes > 32-bits.
 cpp_arguments += '-D_FILE_OFFSET_BITS=64'
 
+link_arguments = []
+
 cxx = meson.get_compiler('cpp')
 cpu = host_machine.cpu()
 neon = get_option('neon_flags')
+
+# Enable coverage flags when in debug build type
+if get_option('buildtype') == 'debug'
+    cpp_arguments += ['-fprofile-arcs', '-ftest-coverage']
+    link_arguments += ['--coverage']
+endif
 
 if cxx.get_id() == 'gcc'
     cpp_arguments += '-Wno-psabi'
@@ -50,7 +58,9 @@ subdir('output')
 subdir('preview')
 subdir('utils')
 
+# Add coverage arguments to the project
 add_project_arguments(cpp_arguments, language : 'cpp')
+add_project_link_arguments(link_arguments, language : 'cpp')
 
 # Must be put after add_project_arguments as it defines shared library targets.
 subdir('post_processing_stages')
