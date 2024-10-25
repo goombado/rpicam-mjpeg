@@ -341,6 +341,8 @@ int main(int argc, char *argv[])
 				// destroy encoder and create a new one
 				app.reset(new RPiCamMJPEGEncoder());
 			}
+			else
+				break;
 		}
 	}
 	catch (std::exception const &e)

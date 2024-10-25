@@ -47,9 +47,9 @@ struct MJPEGOptions : public VideoStillOptions
             "Set the output path for the video stream. Can be udp/tcp for network stream")
         ("media-path,mp", value<std::string>(&media_path)->default_value("/var/www/media/"),
             "Set the base path for media files")
-        ("image-width", value<unsigned int>(&image_width)->default_value(0),
+        ("image-width", value<unsigned int>(&image_width)->default_value(640),
             "Set the width of the image file")
-        ("image-height", value<unsigned int>(&image_height)->default_value(0),
+        ("image-height", value<unsigned int>(&image_height)->default_value(360),
             "Set the height of the image file")
         ("image-mode", value<std::string>(&image_mode_string),
             "Camera mode for image as W:H:bit-depth:packing, where packing is P (packed) or U (unpacked)")
@@ -108,11 +108,6 @@ struct MJPEGOptions : public VideoStillOptions
             lores_width = 640;
         if (!lores_height)
             lores_height = 360;
-        
-        if (!image_width)
-            image_width = 640;
-        if (!image_height)
-            image_height = 360;
         
         // check if the file /etc/rpicam-mjpeg exists, and if so set config_file to this
         // std::ifstream ifs("/etc/rpicam-mjpeg");

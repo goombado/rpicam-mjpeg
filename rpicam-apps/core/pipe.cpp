@@ -16,11 +16,9 @@
 
 enum Flag {
     IO, // image-output
-    MO, // mjpeg-output
+    PO, // mjpeg-output
     VO, // video-output
     MP, // media-path
-    IC, // image-count
-    VC, // video-count
     BR, // brightness
     SH, // sharpness
     CO, // contrast
@@ -34,16 +32,15 @@ enum Flag {
     TL, // Stop/start timelapse, tl 0/1 [t]
     TV, // N * 1/10 seconds between images in timelapse, tv [n]
     VI, // Set video split interval in seconds, vi [n]
+    MD, // Set motion detection, md 0/1
     OTHER
 };
 
 std::unordered_map<std::string, Flag> flag_map = {
     {"IO", IO},
-    {"MO", MO},
+    {"PO", PO},
     {"VO", VO},
     {"MP", MP},
-    {"IC", IC},
-    {"VC", VC},
     {"BR", BR},
     {"SH", SH},
     {"CO", CO},
@@ -56,7 +53,8 @@ std::unordered_map<std::string, Flag> flag_map = {
     {"IM", IM},
     {"TL", TL},
     {"TV", TV},
-    {"VI", VI}
+    {"VI", VI},
+    {"MD", MD}
 };
 
 bool isFloat(const std::string& s) {
@@ -233,7 +231,7 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
             app->SetFifoRequest(FIFORequest::UNKNOWN);
             break;
 
-        case MO: // mjpeg-output
+        case PO: // mjpeg-output
             app->WriteOptionToConfigFile(command_raw, arg);
             app->SetFifoRequest(FIFORequest::UNKNOWN);
             break;
@@ -247,16 +245,6 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
             app->WriteOptionToConfigFile(command_raw, arg);
             app->SetFifoRequest(FIFORequest::UNKNOWN);
             break;
-
-        case IC: // image-count
-            app->WriteOptionToConfigFile(command_raw, arg);
-            app->SetFifoRequest(FIFORequest::UNKNOWN);
-            break;
-
-        case VC: // video-count
-            app->WriteOptionToConfigFile(command_raw, arg);
-            app->SetFifoRequest(FIFORequest::UNKNOWN);
-            break; 
 
         case BR: // brightness
             ss >> arg;
@@ -381,6 +369,24 @@ void Pipe::readFIFO(RPiCamMJPEGEncoder *app) {
             ss >> arg;
             if (!isInteger(arg))
                 app->SetVideoSplitInterval(std::stoi(arg));
+            else
+                app->SetFifoRequest(FIFORequest::UNKNOWN);
+            break;
+        
+        case MD:
+            ss >> arg;
+            if (arg == "0")
+                app->WriteOptionToConfigFile("post-process-file", "");
+            else if (arg == "1")
+            {
+                if (ss.eof())
+                    app->WriteOptionToConfigFile("post-process-file", "internal_motion_detect.json");
+                else
+                {
+                    ss >> arg;
+                    app->WriteOptionToConfigFile("post-process-file", arg);
+                }
+            }
             else
                 app->SetFifoRequest(FIFORequest::UNKNOWN);
             break;
