@@ -56,8 +56,7 @@ jobs:
                     meson compile -C build
               - name: Run test.py script
                 run: |
-                    mkdir -p test_output
-                    python3 utils/test.py --exe-dir ./build/ --output-dir ./test_output --json-dir ./assets/
+                    make test
 
             #   - name: Post-build cache save
             #     uses: actions/cache@v3
