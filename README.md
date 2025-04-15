@@ -1,44 +1,11 @@
-# p05c-rpi-gpu
-## High Performance Multi-Stream Camera System for Raspberry Pi
-
-## Project Info
-
-#### Team: P05C
-
-#### University/Canvas Name: COMP3888_M12_02
-
-#### Tutor: Lin Zhang \[[lzha8455@uni.sydney.edu.au](mailto:lzha8455@uni.sydney.edu.au)\]
-
-### Team Members
-
-| Name               | SID       | Unikey   | Email                      |
-| ------------------ | --------- | -------- | -------------------------- |
-| Andrei Agnew       | 510471659 | aagn5279 | aagn5279@uni.sydney.edu.au |
-| Alistair MacDonald | 510465636 | amac2328 | amac2328@uni.sydney.edu.au |
-| Daniel Miu         | 510423924 | dmiu7957 | dmiu7957@uni.sydney.edu.au |
-| Eleanor Taylor     | 540908525 | etay0703 | etay0703@uni.sydney.edu.au |
-| Grant Dong         | 510472058 | gdon7480 | gdon7480@uni.sydney.edu.au |
-| Patrick Sparks     | 440181875 | pspa2200 | pspa2200@uni.sydney.edu.au |
-
-### Client Information
-
-| Name           | Email                       |
-| -------------- | --------------------------- |
-| Cian Byrne     | cian.byrne@coliemore.com.au |
-| Kitt Morjanova | kitt@mailington.com         |
-
-### Documentation
-
-Our Documentation in Confluence can be found at [https://comp3888-m12-02-2024.atlassian.net/wiki/spaces/COMP3888M1/overview](https://comp3888-m12-02-2024.atlassian.net/wiki/spaces/COMP3888M1/overview)
-
-<br>
-
-![](InsiteProjectSolutions.png) 
-
-<br>
-
 # rpicam-mjpeg
-### A fork of Raspberry Pi's [rpicam-apps](https://www.github.com/raspberrypi/rpicam-apps) suite of camera apps that includes a modernised version of [RaspiMJPEG](https://github.com/roberttidey/userland/tree/master/host_applications/linux/apps/raspicam)
+## An extension of the [rpicam-apps](https://github.com/raspberrypi/rpicam-apps) suite of Raspberry Pi camera apps that reintroduces the functionality of the MMAL-based legacy application [RaspiMJPEG](https://github.com/roberttidey/userland/tree/master/host_applications/linux/apps/raspicam)
+
+### Developed by
+
+Andrei Agnew, Alistair MacDonald, Daniel Miu, Eleanor Taylor, Grant Dong and Patrick Sparks
+
+## Introduction
 RaspiMJPEG was a camera app for the Raspberry Pi based on the MMAL API. This camera API has since been deprecated in modern Raspberry Pi systems in favour of the standardised Linux V4L2 Camera API.
 
 RaspiMJPEG was originally developed by combining the existing `RaspiVid` and `RaspiStill` apps into one app that could support up to three simultaneous streams - an MJPEG preview stream, a video recording stream, and an image capture stream. MMAL was able to support this level of concurrency, and so RaspiMJPEG could easily handle these streams. It was also interfaceable via commands supplied in a named pipe, allowing other apps to easily communicate with it.
@@ -50,7 +17,7 @@ Since the Raspberry Pi 4, MMAL is no longer supported, and has been replaced wit
 1.   Clone the repository and enter the `rpicam-apps` directory.
 
      ```sh
-     git clone https://github.com/consiliumsolutions/p05c-rpi-gpu
+     git clone https://github.com/goombado/rpicam-mjpeg
      cd p05c-rpi-gpu/rpicam-apps
      ```
 
